@@ -8,7 +8,7 @@ close all
 
 % Load File
 
-filename = '2.jpg'
+filename = '4.jpg'
 
 blank_board = imread(filename);
 blank_board_hsv = rgb2hsv(blank_board);
