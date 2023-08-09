@@ -8,7 +8,7 @@ close all
 
 % Load File
 
-filename = '3.jpg'
+filename = '4.jpg'
 
 blank_board = imread(filename);
 blank_board_hsv = rgb2hsv(blank_board);
@@ -18,10 +18,6 @@ hsv = rgb2hsv(rgb);
 
 figure(1);
 imshow(blank_board_hsv);
-
-mask_yellow =  (blank_board_hsv(:,:,1) <= 0.1)&(blank_board_hsv(:,:,1) > 0.07)&...
-        (blank_board_hsv(:,:,2) <= 0.65)&(blank_board_hsv(:,:,2) > 0.50)&...
-        (blank_board_hsv(:,:,3) <= 0.9)&(blank_board_hsv(:,:,3) > 0.7);
 
 mask_purple =  (blank_board_hsv(:,:,1) <= 0.79)&(blank_board_hsv(:,:,1) > 0.75)&...
         (blank_board_hsv(:,:,2) <= 0.58)&(blank_board_hsv(:,:,2) > 0.54)&...
@@ -50,13 +46,17 @@ point4 = [-900, -525];
 % world = [point3; point4 ; point1; point2]
 world = [point4; point3 ; point2; point1]
 
-outputFrameWorld = [abs(900-250) abs(525-75) 3];
+outputFrameWorld = [abs(900-250) abs(525-75)];
 
 tform_world = fitgeotrans([X Y],world,'projective');
 
 board_trans_world = imwarp(blank_board,tform_world,'OutputView',imref2d(outputFrameWorld));
 
 % Mask for Yellow Corners
+mask_yellow =  (blank_board_hsv(:,:,1) <= 0.1)&(blank_board_hsv(:,:,1) > 0.07)&...
+        (blank_board_hsv(:,:,2) <= 0.65)&(blank_board_hsv(:,:,2) > 0.50)&...
+        (blank_board_hsv(:,:,3) <= 0.9)&(blank_board_hsv(:,:,3) > 0.7);
+
 mask_yellow = imclose(mask_yellow,se);
 mask_yellow = bwareaopen(mask_yellow,100);
 figure(3);
@@ -73,16 +73,9 @@ hold on
 plot(centers_yellow(:,1),centers_yellow(:,2),'*r')
 
 % Display as Image
-point1 = [0, 0];
-point2 = [abs(900-250), 0];
-point3 = [0, abs(525-75)];
-point4 = [abs(900-250), abs(525-75)];
 
-% world_img = [point3; point4 ; point1; point2]
-world_img = [0 0 ; 0 590 ; 380 0 ; 380 590];
-% world_img = [point4; point1 ; point2; point3]
+world_img = [380 0 ; 380 590 ; 0 0 ; 0 590];
 
-% outputFrameImg = [abs(900-250) abs(525-75)  3];
 outputFrameImg = [590 380];
 
 tform_img = fitgeotrans(centers_yellow,world_img,'projective');
@@ -99,6 +92,24 @@ board_corners_img = centers_yellow
 
 % Convert to World Coordinates
 board_corners_world = transformPointsForward(tform_world,board_corners_img)
+
+% Produce Transform for Transformed Image to World
+% trans_T_world = trans_T_original*original_T_world
+% trans_T_original = original_T_trans'
+% tform_img_to_world = tform_img.T'*tform_world
+
+% Test to see inverse of tform.img
+
+P_img = [0 0];
+
+P_original = transformPointsInverse(tform_img,P_img)
+P_world = transformImgToWorld(tform_img,tform_world,P_img);
+
+figure(4)
+
+imshow(blank_board)
+hold on
+plot(P_original(1),P_original(2),'g*','MarkerSize',30)
 
 num_cols = 5;
 num_rows = 8;
@@ -126,7 +137,7 @@ for row = 1:num_rows
         % plot(square_center_kernel{col,row}(1,:),square_center_kernel{col,row}(2,:),'-b');
 
         hold off
-        square_center_world{col,row} = transformPointsForward(tform_world,point);
+        square_center_world{col,row} = transformPointsForward(tform_img_to_world,point);
     end
 end
 
@@ -161,7 +172,7 @@ figure;
 imshow(mask_blue)
 
 [blue_puck_img_coord,blue_puck_cell_coord,blue_puck_world_coord] = ...
-    findColouredPuck(mask_blue,square_center_img,2,tform_world);
+    findColouredPuck(mask_blue,square_center_img,2,tform_img_to_world);
 
 hold on
 plot(blue_puck_img_coord(:,1),blue_puck_img_coord(:,2),'b*','MarkerSize',30)
@@ -180,7 +191,7 @@ figure;
 imshow(mask_green)
 
 [green_puck_img_coord,green_puck_cell_coord,green_puck_world_coord] = ...
-    findColouredPuck(mask_green,square_center_img,2,tform_world);
+    findColouredPuck(mask_green,square_center_img,2,tform_img_to_world);
 
 hold on
 plot(green_puck_img_coord(:,1),green_puck_img_coord(:,2),'g*','MarkerSize',30)
@@ -192,32 +203,39 @@ plot(green_puck_img_coord(:,1),green_puck_img_coord(:,2),'g*','MarkerSize',30)
 host = '127.0.0.1'; % THIS IP ADDRESS MUST BE USED FOR THE VIRTUAL BOX VM
 % host = '192.168.230.128'; % THIS IP ADDRESS MUST BE USED FOR THE VMWARE
 % host = '192.168.0.100'; % THIS IP ADDRESS MUST BE USED FOR THE REAL ROBOT
-port = 30003;
-% 
+rtdeport = 30003;
+vacuumport = 63352;
 
 % Calling the constructor of rtde to setup tcp connction
-rtde = rtde(host,port);
+rtde = rtde(host,rtdeport);
 
-pts = [];
+% Calling the constructor of vacuum to setup tcp connction
+vacuum = vacuum(host,vacuumport);
+
+corners = [];
 
 for i = 1:length(board_corners_world)
-    pts = cat(1,pts,[board_corners_world(i,1), board_corners_world(i,2), 20, 2.2214, -2.2214, 0.00])
+    corners = cat(1,corners,[board_corners_world(i,1), board_corners_world(i,2), 20, 2.2214, -2.2214, 0.00])
 end
 
-[[4,3,2,1]',pts]
-
-home = [-588.53, -133.30, 371.91, 2.2214, -2.2214, 0.00];
+[[4,3,2,1]',corners]
 
 
-% pose1 = rtde.movej(pts(1,:));
+pose1 = rtde.movej(pts(1,:));
 pose2 = rtde.movej(pts(2,:));
 pose3 = rtde.movej(pts(3,:));
 pose4 = rtde.movej(pts(4,:));
 
-% poses = [pose1;pose2;pose3;pose4];
-poses = [pose2;pose3;pose4];
+poses = [pose1;pose2;pose3;pose4];
+% poses = [pose2;pose3;pose4];
 
 rtde.drawPath(poses);
+
+% Pick up Green Puck
+
+green_puck = [green_puck_world_coord(i,1), green_puck_world_coord(i,2), 20, 2.2214, -2.2214, 0.00]
+
+pose1 = rtde.movej();
 
 %% Part B - BUG 2
 
@@ -263,7 +281,7 @@ plot(bug_path(:, 1), bug_path(:, 2),'LineWidth', 4, 'Color', 'g');
 
 %%
 
-function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(mask,centers,width,tform_world)
+function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(mask,centers,width,tform_img_to_world)
     
     puck_img_coord = [];
     puck_cell_coord = [];
@@ -284,10 +302,16 @@ function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(ma
 
                 puck_img_coord = cat(1,puck_img_coord,centers{col,row});
                 puck_cell_coord = cat(1,puck_cell_coord,[col,row]);
-                puck_world_coord = cat(1,puck_world_coord,transformPointsForward(tform_world,point));
+                puck_world_coord = cat(1,puck_world_coord,transformPointsForward(tform_img_to_world,point));
 
             end
         end
     end
 
 end
+
+function P_world = transformImgToWorld(tform_img,tform_world,P_img)
+    P_original = transformPointsInverse(tform_img,P_img)
+    P_world = transformPointsForward(tform_world,P_original)
+end
+
