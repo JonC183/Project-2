@@ -240,10 +240,18 @@ plot(green_puck_img_coord(:,1),green_puck_img_coord(:,2),'g*','MarkerSize',30)
 display(green_puck_cell_coord)
 
 %%%%% Create Grid %%%%%
+grid = [ones(1,10) ; [ones(5,1) zeros(5,8) ones(5,1)] ; ones(1,10)];
 
+for i = 1:length(red_puck_cell_coord)
+    cell_x = red_puck_cell_coord(i,1) + 1;
+    cell_y = red_puck_cell_coord(i,2) + 1;
+    
+    grid(cell_x,cell_y) = 1;
+end
 
+display(grid')
 
-% Move Robot %%%%%
+%% Move Robot %%%%%
 
 % % TCP Host and Port settings
 host = '127.0.0.1'; % THIS IP ADDRESS MUST BE USED FOR THE VIRTUAL BOX VM
