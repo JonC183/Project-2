@@ -74,7 +74,12 @@ plot(centers_yellow(:,1),centers_yellow(:,2),'*r')
 
 % Display as Image
 
-world_img = [380 0 ; 380 590 ; 0 0 ; 0 590];
+point1 = [0 0];
+point2 = [380 0];
+point3 = [0 590];
+point4 = [380 590];
+
+world_img = [point3 ; point1 ; point4 ; point2];
 
 outputFrameImg = [590 380];
 
@@ -123,6 +128,7 @@ square_center_world = [];
 
 radius = 20;
 
+figure(1)
 for row = 1:num_rows
     for col = 1:num_cols
         point = [(cols_size*col - round(cols_size/2)) ...
@@ -137,7 +143,7 @@ for row = 1:num_rows
         % plot(square_center_kernel{col,row}(1,:),square_center_kernel{col,row}(2,:),'-b');
 
         hold off
-        square_center_world{col,row} = transformPointsForward(tform_img_to_world,point);
+        square_center_world{col,row} = transformImgToWorld(tform_img,tform_world,point);
     end
 end
 
@@ -154,7 +160,7 @@ figure;
 imshow(mask_red)
 
 [red_puck_img_coord,red_puck_cell_coord,red_puck_world_coord] = ...
-    findColouredPuck(mask_red,square_center_img,2,tform_world);
+    findColouredPuck(mask_red,square_center_img,2,tform_img,tform_world);
 
 hold on
 plot(red_puck_img_coord(:,1),red_puck_img_coord(:,2),'r*','MarkerSize',30)
@@ -172,7 +178,7 @@ figure;
 imshow(mask_blue)
 
 [blue_puck_img_coord,blue_puck_cell_coord,blue_puck_world_coord] = ...
-    findColouredPuck(mask_blue,square_center_img,2,tform_img_to_world);
+    findColouredPuck(mask_blue,square_center_img,2,tform_img,tform_world);
 
 hold on
 plot(blue_puck_img_coord(:,1),blue_puck_img_coord(:,2),'b*','MarkerSize',30)
@@ -191,7 +197,7 @@ figure;
 imshow(mask_green)
 
 [green_puck_img_coord,green_puck_cell_coord,green_puck_world_coord] = ...
-    findColouredPuck(mask_green,square_center_img,2,tform_img_to_world);
+    findColouredPuck(mask_green,square_center_img,2,tform_img,tform_world);
 
 hold on
 plot(green_puck_img_coord(:,1),green_puck_img_coord(:,2),'g*','MarkerSize',30)
@@ -281,7 +287,7 @@ plot(bug_path(:, 1), bug_path(:, 2),'LineWidth', 4, 'Color', 'g');
 
 %%
 
-function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(mask,centers,width,tform_img_to_world)
+function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(mask,centers,width,tform_img,tform_world)
     
     puck_img_coord = [];
     puck_cell_coord = [];
@@ -302,7 +308,8 @@ function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(ma
 
                 puck_img_coord = cat(1,puck_img_coord,centers{col,row});
                 puck_cell_coord = cat(1,puck_cell_coord,[col,row]);
-                puck_world_coord = cat(1,puck_world_coord,transformPointsForward(tform_img_to_world,point));
+                world_point = transformImgToWorld(tform_img,tform_world,point);
+                puck_world_coord = cat(1,puck_world_coord,world_point);
 
             end
         end
@@ -310,8 +317,4 @@ function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(ma
 
 end
 
-function P_world = transformImgToWorld(tform_img,tform_world,P_img)
-    P_original = transformPointsInverse(tform_img,P_img)
-    P_world = transformPointsForward(tform_world,P_original)
-end
 

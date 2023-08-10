@@ -74,7 +74,12 @@ plot(centers_yellow(:,1),centers_yellow(:,2),'*r')
 
 % Display as Image
 
-world_img = [380 0 ; 380 590 ; 0 0 ; 0 590];
+point1 = [0 0];
+point2 = [380 0];
+point3 = [0 590];
+point4 = [380 590];
+
+world_img = [point3 ; point1 ; point4 ; point2];
 
 outputFrameImg = [590 380];
 
@@ -102,15 +107,8 @@ board_corners_world = transformPointsForward(tform_world,board_corners_img)
 
 P_img = [0 0];
 
-display(tform_img.T)
-
-% P_original = tform_img.T'*P_img
-
-
-
 P_original = transformPointsInverse(tform_img,P_img)
-
-P_world = transformImgToWorld
+P_world = transformImgToWorld(tform_img,tform_world,P_img);
 
 figure(4)
 
@@ -288,7 +286,7 @@ plot(bug_path(:, 1), bug_path(:, 2),'LineWidth', 4, 'Color', 'g');
 
 %%
 
-function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(mask,centers,width,tform_img_to_world)
+function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(mask,centers,width,tform_img,tform)
     
     puck_img_coord = [];
     puck_cell_coord = [];
@@ -316,3 +314,9 @@ function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(ma
     end
 
 end
+
+function P_world = transformImgToWorld(tform_img,tform_world,P_img)
+    P_original = transformPointsInverse(tform_img,P_img)
+    P_world = transformPointsForward(tform_world,P_original)
+end
+
