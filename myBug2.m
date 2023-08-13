@@ -48,7 +48,7 @@
 %
 % http://www.petercorke.com
 
-classdef Bug2 < Navigation
+classdef myBug2 < Navigation
 
     properties(Access=protected)
         H       % hit points
@@ -61,7 +61,7 @@ classdef Bug2 < Navigation
 
     methods
 
-        function bug = Bug2(varargin)
+        function bug = myBug2(varargin)
             %Bug2.Bug2 Construct a Bug2 navigation object 
             %
             % B = Bug2(MAP, OPTIONS) is a bug2 navigation object, and MAP is an occupancy grid,
