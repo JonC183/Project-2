@@ -277,40 +277,31 @@ classdef myBug2 < Navigation
                 % If this is the case always goes back to moving E
                 if ~(isequal(bug.heading, dirs(N,:)') || isequal(bug.heading, dirs(E,:)') || ...
                     isequal(bug.heading, dirs(S,:)')|| isequal(bug.heading, dirs(W,:)'))
-                    bug.heading = dirs(E);
+                    bug.heading = dirs(E,:)';
                 end
                 
-                if isequal(bug.heading, dirs(N,:)')
-                    leftWallDir = dirs(W,:)';
-                elseif isequal(bug.heading, dirs(E,:)')
-                    leftWallDir  = dirs(N,:)';
-                elseif isequal(bug.heading, dirs(S,:)')
-                    leftWallDir = dirs(E,:)';
-                elseif isequal(bug.heading, dirs(W,:)')
-                    leftWallDir  = dirs(S,:)';
-                end
+                leftWallDir = bug.leftWallDirection(dirs);
+                frontWallDir = bug.heading;
 
-                wallCoord = robot + leftWallDir;
+                leftWallCoord = robot + leftWallDir; 
+                frontWallCoord = robot + frontWallDir;
     
-                if bug.detectWall(robot,wallCoord) %%% Continue moving in same direction
-                    dx = bug.heading(1);
-                    dy = bug.heading(2);
-                elseif ~bug.detectWall(robot,wallCoord) %%% Turn left
-                    dx = leftWallDir(1);
-                    dy = leftWallDir(2);
-                else
-                   print('You should be here LOLOL');
-                end
-    
-                new_robot_dir = [dx;dy];
+                if bug.detectWall(robot,leftWallCoord) 
+                    if bug.detectWall(robot,frontWallCoord) %%% There is a wall in front and to the left so turn right
+                        bug.turnHeadingRight(dirs);
+                    end
+                    %%% Else stay on path and keep heading the same
+                elseif ~bug.detectWall(robot,leftWallCoord)  
+                        bug.turnHeadingLeft(dirs);                       
+                end 
+                
+                % Test new position to see if there is an obstacle
+                new_position = robot + bug.heading;
 
-                new_position = robot + new_robot_dir;
-
-                if bug.occgridnav(new_position(2),new_position(1)) == 0
+                if bug.occgridnav(new_position(2),new_position(1)) == 0 
                     n = new_position;
-                elseif bug.occgridnav(new_position(2),new_position(1)) == 1
-                    % Turn left
-                    turnHeadingLeft();
+                else % Robot stays put until finds a direction where it can move
+                    n = robot;
                 end                                                                                      
 
                 % are we on the M-line now ?
@@ -332,14 +323,13 @@ classdef myBug2 < Navigation
             error('RTB:Bug2:badcall', 'This class has no plan method');
         end
 
-        function wallDetected = detectWall(bug,robot,dir)
+        function wallDetected = detectWall(bug,robot,wallCoord)
             im = bug.occgridnav;
-            leftOfRobot = robot + dir;
 
-            if im(leftOfRobot(2),leftOfRobot(1)) == 1 % Wall Detect!! :)))
+            if im(wallCoord(2),wallCoord(1)) == 1 % Wall Detect!! :)))
                 wallDetected = 1;
                 return;
-            elseif im(leftOfRobot(2),leftOfRobot(1)) == 0 % Wall not Detected :((
+            elseif im(wallCoord(2),wallCoord(1)) == 0 % Wall not Detected :((
                 wallDetected = 0;
                 return;
             else    % Your at edge of map
@@ -348,7 +338,14 @@ classdef myBug2 < Navigation
             end
         end
 
-        function turnHeadingLeft(bug)
+        function turnHeadingLeft(bug,dirs)
+            
+            % Define N,E,W,S
+            E = 1;
+            S = 2;
+            W = 3;
+            N = 4;
+
             if isequal(bug.heading, dirs(N,:)')
                 bug.heading = dirs(W,:)';
             elseif isequal(bug.heading, dirs(E,:)')
@@ -359,6 +356,44 @@ classdef myBug2 < Navigation
                 bug.heading  = dirs(S,:)';
             end
         end
+
+        function turnHeadingRight(bug,dirs)
+            
+            % Define N,E,W,S
+            E = 1;
+            S = 2;
+            W = 3;
+            N = 4;
+
+            if isequal(bug.heading, dirs(N,:)')
+                bug.heading = dirs(E,:)';
+            elseif isequal(bug.heading, dirs(E,:)')
+                bug.heading  = dirs(S,:)';
+            elseif isequal(bug.heading, dirs(S,:)')
+                bug.heading = dirs(W,:)';
+            elseif isequal(bug.heading, dirs(W,:)')
+                bug.heading  = dirs(N,:)';
+            end
+        end
+
+        function leftWallDir = leftWallDirection(bug,dirs)
+            % Define N,E,W,S
+            E = 1;
+            S = 2;
+            W = 3;
+            N = 4;
+
+            if isequal(bug.heading, dirs(N,:)')
+                leftWallDir = dirs(W,:)';
+            elseif isequal(bug.heading, dirs(E,:)')
+                leftWallDir  = dirs(N,:)';
+            elseif isequal(bug.heading, dirs(S,:)')
+                leftWallDir = dirs(E,:)';
+            elseif isequal(bug.heading, dirs(W,:)')
+                leftWallDir  = dirs(S,:)';
+            end
+        end
+
 
     end % methods
 end % classdef
