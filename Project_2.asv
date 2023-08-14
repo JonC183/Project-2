@@ -8,146 +8,109 @@ close all
 
 % Load File
 
-filename = '5.jpg'
+filename = '2.jpg'
 
-blank_board = imread(filename);
-blank_board_hsv = rgb2hsv(blank_board);
+image = imread(filename);
+image_hsv = rgb2hsv(image);
+
+% Load from Camera
+% 
+% camList = webcamlist;
+% cam = webcam(1);
+% 
+% preview(cam)
+
+%%% Don't Start Until Ready
+prompt = 'Start';
+inputCommand = input(prompt)
+% 
+% 
+% while true
+%   image = snapshot(cam)
+    %%% CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
+% end
+% 
 
 rgb = prism(6);
 hsv = rgb2hsv(rgb);
 
 figure(1);
-imshow(blank_board_hsv);
+imshow(image_hsv);
 
-mask_purple =  (blank_board_hsv(:,:,1) <= 0.79)&(blank_board_hsv(:,:,1) > 0.75)&...
-        (blank_board_hsv(:,:,2) <= 0.58)&(blank_board_hsv(:,:,2) > 0.54)&...
-        (blank_board_hsv(:,:,3) <= 0.6)&(blank_board_hsv(:,:,3) > 0.4);
+% Mask for Purple Circles
+h_purple = [0.75 0.79];
+s_purple = [0.54 0.58];
+v_purple = [0.4 0.6];
 
-se = strel('disk',7,4);
-mask_purple = imclose(mask_purple,se);
-mask_purple = bwareaopen(mask_purple,100);
-figure(2);
-imshow(mask_purple)
-
-% Find Circles and Return Centers
-% [centers_purple,radii_purple] = imfindcircles(mask_purple,[6 15]);
-
-
-blobs_purple = regionprops(mask_purple,'Centroid')
-
-centers_purple = [blobs_purple(1).Centroid ; blobs_purple(2).Centroid ; blobs_purple(3).Centroid ...
-    ; blobs_purple(4).Centroid]
+mask_purple = createMaskAndShow(image_hsv,h_purple,s_purple,v_purple);
+centers_purple = findCenters(mask_purple);
 
 hold on
 plot(centers_purple(:,1),centers_purple(:,2),'*r');
+hold off
 
-% Order Coordinates
-bound_x = 100;
-bound_y = 200;
+% Mask for Yellow Corners
+h_yellow = [0.07 0.11];
+s_yellow = [0.5 0.65];
+v_yellow = [0.7 0.9];
 
-left_x = 300;
-right_x = 600;
+mask_yellow = createMaskAndShow(image_hsv,h_yellow,s_yellow,v_yellow);
+centers_yellow = findCenters(mask_yellow);
 
-top_y = 40;
-bottom_y = 300;
+hold on
+plot(centers_yellow(:,1),centers_yellow(:,2),'*r');
+hold off
 
-% centers_purple = orderCenters(centers_purple,left_x,right_x,top_y,bottom_y,bound_x,bound_y);
-
-centers_purple = sortrows(centers_purple,1);
-centers_purple = [sortrows(centers_purple(1:2,:),2);sortrows(centers_purple(3:4,:),2);]
-
-
-X = centers_purple(:,1);
-Y = centers_purple(:,2);
-
-% Conversion for world frame
+%%%% Conversion for world frame %%%%%
 point1 = [-250, 75];
 point2 = [-250, -525];
 point3 = [-900, 75];
 point4 = [-900, -525];
 
-% world = [point3; point4 ; point1; point2]
-% world = [point4; point3 ; point2; point1]
 world = [point1 ; point3 ; point2 ; point4];
-
 
 outputFrameWorld = [abs(900-250) abs(525+75)];
 
-tform_world = fitgeotrans([X Y],world,'projective');
+tform_world = fitgeotrans(centers_purple,world,'projective');
+board_trans_world = imwarp(image,tform_world,'OutputView',imref2d(outputFrameWorld));
 
-board_trans_world = imwarp(blank_board,tform_world,'OutputView',imref2d(outputFrameWorld));
-
-% Mask for Yellow Corners
-mask_yellow =  (blank_board_hsv(:,:,1) <= 0.11)&(blank_board_hsv(:,:,1) > 0.07)&...
-        (blank_board_hsv(:,:,2) <= 0.65)&(blank_board_hsv(:,:,2) > 0.50)&...
-        (blank_board_hsv(:,:,3) <= 0.9)&(blank_board_hsv(:,:,3) > 0.7);
-
-mask_yellow = imclose(mask_yellow,se);
-mask_yellow = bwareaopen(mask_yellow,100);
-figure(3);
-imshow(mask_yellow)
-
-% Find Points for Yellow Corners
-% [centers_yellow,radii_yellow] = imfindcircles(mask_yellow,[3 10]);
-blobs_yellow = regionprops(mask_yellow,'Centroid')
-
-centers_yellow = [blobs_yellow(1).Centroid ; blobs_yellow(2).Centroid ; blobs_yellow(3).Centroid ...
-    ; blobs_yellow(4).Centroid]
-
-hold on
-plot(centers_yellow(:,1),centers_yellow(:,2),'*r')
-
-% Order Coordinates
-
-% centers_yellow = orderCenters(centers_yellow,left_x,right_x,top_y,bottom_y,bound_x,bound_y);
-
-centers_yellow = sortrows(centers_yellow,1);
-centers_yellow = [sortrows(centers_yellow(1:2,:),2);sortrows(centers_yellow(3:4,:),2);]
-
-% Display as Image
-
+%%%% Conversion for Image %%%%
 point1 = [0 0];
 point2 = [380 0];
 point3 = [0 590];
 point4 = [380 590];
 
-% world_img = [point3 ; point1 ; point4 ; point2];
-% world_img = [point1 ; point2 ; point3 ; point4];
 world_img = [point1 ; point3 ; point2 ; point4];
-
 
 outputFrameImg = [590 380];
 
 tform_img = fitgeotrans(centers_yellow,world_img,'projective');
 
-board_trans_img = imwarp(blank_board_hsv,tform_img,'OutputView',imref2d(outputFrameImg));
-board_trans_img_rgb = imwarp(blank_board,tform_img,'OutputView',imref2d(outputFrameImg));
+board_trans_img = imwarp(image_hsv,tform_img,'OutputView',imref2d(outputFrameImg));
+board_trans_img_rgb = imwarp(image,tform_img,'OutputView',imref2d(outputFrameImg));
 
 figure(1);
 imshow(board_trans_img);
 
-
 % Get Coordinates of Corners from Image
-board_corners_img = centers_yellow
+board_corners_img = centers_yellow;
 
 % Convert to World Coordinates
-board_corners_world = transformPointsForward(tform_world,board_corners_img)
+board_corners_world = transformPointsForward(tform_world,board_corners_img);
 
 % Produce Transform for Transformed Image to World
 % trans_T_world = trans_T_original*original_T_world
 % trans_T_original = original_T_trans'
 % tform_img_to_world = tform_img.T'*tform_world
 
-% Test to see inverse of tform.img
-
+% Test to see inverse of tform_img
 P_img = [0 0];
 
-P_original = transformPointsInverse(tform_img,P_img)
+P_original = transformPointsInverse(tform_img,P_img);
 P_world = transformImgToWorld(tform_img,tform_world,P_img);
 
 figure(4)
-
-imshow(blank_board)
+imshow(image)
 hold on
 plot(P_original(1),P_original(2),'g*','MarkerSize',30)
 
@@ -158,10 +121,8 @@ cols_size = round(outputFrameImg(1)/num_cols);
 rows_size = round(outputFrameImg(2)/num_rows);
 
 square_center_img = {};
-square_center_kernel = {};
+square_kernel_img = {};
 square_center_world = {};
-
-radius = 20;
 
 figure(1)
 for row = 1:num_rows
@@ -170,29 +131,22 @@ for row = 1:num_rows
             (cols_size*col - round(cols_size/2))];
 
         square_center_img{row,col} = point;
-        % square_center_kernel{col,row} = circle(point,radius);
         
         hold on
-        % Plot the point and kernel
+        % Plot the point
         plot(square_center_img{row,col}(1),square_center_img{row,col}(2),'r*');
-        % plot(square_center_kernel{col,row}(1,:),square_center_kernel{col,row}(2,:),'-b');
 
         hold off
         square_center_world{row,col} = transformImgToWorld(tform_img,tform_world,point);
     end
 end
 
-% Detect Red Pucks
-mask_red =  (board_trans_img(:,:,1) <= 0.98)&(board_trans_img(:,:,1) > 0.96)&...
-        (board_trans_img(:,:,2) <= 0.85)&(board_trans_img(:,:,2) > 0.6)&...
-        (board_trans_img(:,:,3) <= 0.8)&(board_trans_img(:,:,3) > 0.6);
+%%%% Detect Red Pucks %%%%
+h_red = [0.96 0.98];
+s_red = [0.6 0.85];
+v_red = [0.6 0.8];
 
-se = strel('disk',7);
-mask_red = imclose(mask_red,se);
-mask_red = bwareaopen(mask_red,100);
-figure;
-
-imshow(mask_red)
+mask_red = createMaskAndShow(image_hsv,h_red,s_red,v_red)
 
 [red_puck_img_coord,red_puck_cell_coord,red_puck_world_coord] = ...
     findColouredPuck(mask_red,square_center_img,2,tform_img,tform_world);
@@ -200,17 +154,12 @@ imshow(mask_red)
 hold on
 plot(red_puck_img_coord(:,1),red_puck_img_coord(:,2),'r*','MarkerSize',30)
 
-% Detect Blue Pucks
-mask_blue =  (board_trans_img(:,:,1) <= 0.7)&(board_trans_img(:,:,1) > 0.6)&...
-        (board_trans_img(:,:,2) <= 0.9)&(board_trans_img(:,:,2) > 0.7)&...
-        (board_trans_img(:,:,3) <= 0.7)&(board_trans_img(:,:,3) > 0.6);
+%%%% Detect Blue Pucks %%%%
+h_blue = [0.6 0.7];
+s_blue = [0.7 0.9];
+v_blue = [0.6 0.7];
 
-se = strel('disk',7);
-mask_blue = imclose(mask_blue,se);
-mask_blue = bwareaopen(mask_blue,100);
-figure;
-
-imshow(mask_blue)
+mask_blue = createMaskAndShow(image_hsv,h_blue,s_blue,v_blue)
 
 [blue_puck_img_coord,blue_puck_cell_coord,blue_puck_world_coord] = ...
     findColouredPuck(mask_blue,square_center_img,2,tform_img,tform_world);
@@ -219,17 +168,16 @@ hold on
 plot(blue_puck_img_coord(:,1),blue_puck_img_coord(:,2),'b*','MarkerSize',30)
 
 
-% Detect Green Puck
+%%%% Detect Green Puck %%%%
 mask_green =  (board_trans_img(:,:,1) <= 0.4)&(board_trans_img(:,:,1) > 0.3)&...
         (board_trans_img(:,:,2) <= 1)&(board_trans_img(:,:,2) > 0.8)&...
         (board_trans_img(:,:,3) <= 0.7)&(board_trans_img(:,:,3) > 0.5);
 
-se = strel('disk',7);
-mask_green = imclose(mask_green,se);
-mask_green = bwareaopen(mask_green,100);
+h_green = [0.3 0.4];
+s_green = [0.8 1];
+v_green = [0.5 0.7];
 
-figure;
-imshow(mask_green)
+mask_green = createMaskAndShow(image_hsv,h_green,s_green,v_green);
 
 [green_puck_img_coord,green_puck_cell_coord,green_puck_world_coord] = ...
     findColouredPuck(mask_green,square_center_img,2,tform_img,tform_world);
@@ -242,12 +190,12 @@ display(green_puck_cell_coord)
 %%%%% Create Grid %%%%%
 grid = [ones(1,10) ; [ones(5,1) zeros(5,8) ones(5,1)] ; ones(1,10)];
 
-for i = 1:length(red_puck_cell_coord)
-    cell_x = red_puck_cell_coord(i,1) + 1;
-    cell_y = red_puck_cell_coord(i,2) + 1;
-    
-    grid(cell_x,cell_y) = 1;
-end
+grid = putInGrid(grid,red_puck_cell_coord,1);
+grid = putInGrid(grid,blue_puck_cell_coord,2);
+grid = putInGrid(grid,green_puck_cell_coord,4);
+
+grid = putInGrid(grid,[1,1],3); % Start Position
+
 
 display(grid')
 
@@ -345,11 +293,11 @@ startup_rvc;
 
 grid = [
 1 1 1 1 1 1 1 1 1 1;
-1 3 1 0 0 0 0 0 0 1;
-1 0 0 1 2 2 0 0 0 1;
-1 4 1 0 1 0 0 0 0 1;
-1 0 1 0 0 1 0 0 0 1;
-1 0 0 0 0 2 1 0 0 1;
+1 3 1 4 0 0 0 0 0 1;
+1 0 0 1 2 0 0 0 0 1;
+1 0 0 0 0 0 2 0 0 1;
+1 0 0 0 0 1 2 0 0 1;
+1 0 0 0 0 0 1 0 0 1;
 1 1 1 1 1 1 1 1 1 1];
 
 for i = 1:(length(grid(1,:))-1)
@@ -395,7 +343,7 @@ function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(ma
             lower_y = point(1) - width;
             upper_y = point(1) + width;
     
-            kernel = mask(lower_x:upper_x,lower_y:upper_y)
+            kernel = mask(lower_x:upper_x,lower_y:upper_y);
             if (sum(kernel(:)) == length(kernel(:)))
 
                 puck_img_coord = cat(1,puck_img_coord,centers{row,col});
@@ -409,4 +357,48 @@ function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(ma
 
 end
 
+function grid = putInGrid(grid,puck_cell_coord,val)
 
+if (length(puck_cell_coord(:,1)) == 1)
+    cell_x = puck_cell_coord(1) + 1;
+    cell_y = puck_cell_coord(2) + 1;
+    
+    grid(cell_x,cell_y) = val;
+    return;
+end
+
+for i = 1:length(puck_cell_coord)
+    cell_x = puck_cell_coord(i,1) + 1;
+    cell_y = puck_cell_coord(i,2) + 1;
+    
+    grid(cell_x,cell_y) = val;
+end
+
+end
+
+function mask = createMaskAndShow(im_hsv,h,s,v)
+    
+    mask =  (im_hsv(:,:,1) <= max(h))&(im_hsv(:,:,1) > min(h))&...
+        (im_hsv(:,:,2) <= max(s))&(im_hsv(:,:,2) > min(s))&...
+        (im_hsv(:,:,3) <= max(v))&(im_hsv(:,:,3) > min(v));
+    se = strel('disk',7);
+    mask = imclose(mask,se);
+    mask = bwareaopen(mask,100);
+
+    figure;
+    imshow(mask)
+end
+
+function centers = findCenters(mask)
+    
+    % Find Circles and Return Centers
+    blobs = regionprops(mask,'Centroid')
+    
+    centers = [blobs(1).Centroid ; blobs(2).Centroid ; blobs(3).Centroid ...
+        ; blobs(4).Centroid]
+    
+    % Order Coordinates
+    centers = sortrows(centers,1);
+    centers = [sortrows(centers(1:2,:),2);sortrows(centers(3:4,:),2);]
+
+end

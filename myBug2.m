@@ -313,6 +313,8 @@ classdef myBug2 < Navigation
                     return;
                 end
 
+
+
                 % no, keep going around
                 bug.message('(%d,%d) keep moving around obstacle', n)
                 bug.k = bug.k+1;
