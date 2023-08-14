@@ -310,7 +310,7 @@ classdef myBug2 < Navigation
                     n = new_position;
                 elseif bug.occgridnav(new_position(2),new_position(1)) == 1
                     % Turn left
-                    turnHeadingLeft();
+                    turnRobotLeft
                 end                                                                                      
 
                 % are we on the M-line now ?
@@ -345,18 +345,6 @@ classdef myBug2 < Navigation
             else    % Your at edge of map
                 wallDetected = -1;
                 return;
-            end
-        end
-
-        function turnHeadingLeft(bug)
-            if isequal(bug.heading, dirs(N,:)')
-                bug.heading = dirs(W,:)';
-            elseif isequal(bug.heading, dirs(E,:)')
-                bug.heading  = dirs(N,:)';
-            elseif isequal(bug.heading, dirs(S,:)')
-                bug.heading = dirs(E,:)';
-            elseif isequal(bug.heading, dirs(W,:)')
-                bug.heading  = dirs(S,:)';
             end
         end
 
