@@ -8,15 +8,7 @@ close all
 
 % Load File
 
-filenames = strcat({'1','2','3','4','5','6'},'.jpg')
-
-images = {};
-for i = 1:length(filenames)
-    images{i} = imread(filenames{i});
-    images_hsv{i} = rgb2hsv(images{i});
-    figure(1);
-    imshow(images_hsv{i})
-end
+filenames = strcat({'3','4','5'},'.jpg')
 
 % Load from Camera
 % 
@@ -25,17 +17,36 @@ end
 % 
 % preview(cam)
 
+images = {};
+images_hsv = {};
+image_folder = 'H:\MTRN4320\GitHub\Project-2\webcamImages\';
+
+for i = 1:length(filenames)
+    images{i} = imread(filenames{i});
+    images_hsv{i} = rgb2hsv(images{i});
+    
+    webcam_filename = strcat(image_folder,string(i),'.mat')
+    save(webcam_filename,"images");
+    figure(1);
+    imshow(images_hsv{i})
+end
+
 %%% Don't Start Until Ready
-prompt = 'Start';
-inputCommand = input(prompt)
+% prompt = 'Start';
+% inputCommand = input(prompt)
 % 
-% 
+% i = 1;
 % while true
-%   image = snapshot(cam)
-    %%% CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
+    %images{end+1} = snapshot(cam);
+%   webcam_filename = strcat(image_folder,string(i),'.mat')
+    save(webcam_filename,"images");
+%   
+    % i = i+1;
+%     %% CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
 % end
 % 
 %% Create Masks
+
 % Mask for Purple Circles
 h_purple = [0.75 0.79];
 s_purple = [0.54 0.58];
@@ -78,8 +89,6 @@ for idx = 1:length(images_hsv)
     % image_hsv = rgb2hsv(image);
     image_hsv = images_hsv{idx};
 
-   
-    
     % Display the image.
     mask_purple{idx} = createMaskAndShow(image_hsv,h_purple,s_purple,v_purple, ...
         purple_mask_figure);
@@ -88,21 +97,44 @@ for idx = 1:length(images_hsv)
     mask_yellow{idx} = createMaskAndShow(image_hsv,h_yellow,s_yellow,v_yellow, ...
         yellow_mask_figure);
     centers_yellow{idx} = findCenters(mask_yellow{idx});
-
-    save(image_hsv)
     
 end
+
+sum_centers_purple = zeros(4,2);
+sum_centers_yellow = zeros(4,2);
 
 for idx = 1:length(images_hsv)
     figure(2);
     hold on
     plot(centers_purple{idx}(:,1),centers_purple{idx}(:,2),'*r');
+    % Get Sum of all Purple Centers
+%     if (centers_purple{idx}(:,1) - centers_purple{idx - 1,:})
+%         
+%     end
+    sum_centers_purple(:,1) = sum_centers_purple(:,1) + centers_purple{idx}(:,1);
+    sum_centers_purple(:,2) = sum_centers_purple(:,2) + centers_purple{idx}(:,2);
+    
     figure(3);
     hold on
     plot(centers_yellow{idx}(:,1),centers_yellow{idx}(:,2),'*r-');
+    % Get Sum of all Yellow Centers
+    sum_centers_yellow(:,1) = sum_centers_yellow(:,1) + centers_yellow{idx}(:,1);
+    sum_centers_yellow(:,2) = sum_centers_yellow(:,2) + centers_yellow{idx}(:,2);
+    
 end
 
-% Get Average For Purple Centers
+% Get Averages
+average_centers_purple = sum_centers_purple./length(images_hsv)
+average_centers_yellow = sum_centers_yellow./length(images_hsv)
+
+% Plot Averages of Each
+figure(2);
+hold on
+plot(average_centers_purple(:,1),average_centers_purple(:,2),'*g');
+
+figure(3);
+hold on
+plot(average_centers_yellow(:,1),average_centers_yellow(:,2),'*g-');
 
 
 %% Conversion for world frame %%%%%
@@ -115,8 +147,8 @@ world = [point1 ; point3 ; point2 ; point4];
 
 outputFrameWorld = [abs(900-250) abs(525+75)];
 
-tform_world = fitgeotrans(centers_purple,world,'projective');
-board_trans_world = imwarp(image,tform_world,'OutputView',imref2d(outputFrameWorld));
+tform_world = fitgeotrans(average_centers_purple,world,'projective');
+board_trans_world = imwarp(images{end},tform_world,'OutputView',imref2d(outputFrameWorld));
 
 %%%% Conversion for Image %%%%
 point1 = [0 0];
@@ -128,16 +160,16 @@ world_img = [point1 ; point3 ; point2 ; point4];
 
 outputFrameImg = [590 380];
 
-tform_img = fitgeotrans(centers_yellow,world_img,'projective');
+tform_img = fitgeotrans(average_centers_yellow,world_img,'projective');
 
-board_trans_img = imwarp(image_hsv,tform_img,'OutputView',imref2d(outputFrameImg));
-board_trans_img_rgb = imwarp(image,tform_img,'OutputView',imref2d(outputFrameImg));
+board_trans_img = imwarp(images_hsv{2},tform_img,'OutputView',imref2d(outputFrameImg));
+board_trans_img_rgb = imwarp(images{2},tform_img,'OutputView',imref2d(outputFrameImg));
 
-figure(1);
+figure(4);
 imshow(board_trans_img);
 
 % Get Coordinates of Corners from Image
-board_corners_img = centers_yellow;
+board_corners_img = average_centers_yellow;
 
 % Convert to World Coordinates
 board_corners_world = transformPointsForward(tform_world,board_corners_img);
@@ -153,8 +185,7 @@ P_img = [0 0];
 P_original = transformPointsInverse(tform_img,P_img);
 P_world = transformImgToWorld(tform_img,tform_world,P_img);
 
-figure(4)
-imshow(image)
+figure(1)
 hold on
 plot(P_original(1),P_original(2),'g*','MarkerSize',30)
 
@@ -168,7 +199,7 @@ square_center_img = {};
 square_kernel_img = {};
 square_center_world = {};
 
-figure(1)
+figure(4)
 for row = 1:num_rows
     for col = 1:num_cols
         point = [(rows_size*row - round(rows_size/2))...
@@ -185,14 +216,15 @@ for row = 1:num_rows
     end
 end
 
-mask_red = createMaskAndShow(board_trans_img,h_red,s_red,v_red);
-mask_blue = createMaskAndShow(board_trans_img,h_blue,s_blue,v_blue);
-mask_green = createMaskAndShow(board_trans_img,h_green,s_green,v_green);
+mask_red = createMaskAndShow(board_trans_img,h_red,s_red,v_red,5);
+mask_blue = createMaskAndShow(board_trans_img,h_blue,s_blue,v_blue,6);
+mask_green = createMaskAndShow(board_trans_img,h_green,s_green,v_green,7);
 
 %%%% Detect Red Pucks %%%%
 [red_puck_img_coord,red_puck_cell_coord,red_puck_world_coord] = ...
     findColouredPuck(mask_red,square_center_img,2,tform_img,tform_world,'red');
 
+figure(5)
 hold on
 plot(red_puck_img_coord(:,1),red_puck_img_coord(:,2),'r*','MarkerSize',30)
 
@@ -200,6 +232,7 @@ plot(red_puck_img_coord(:,1),red_puck_img_coord(:,2),'r*','MarkerSize',30)
 [blue_puck_img_coord,blue_puck_cell_coord,blue_puck_world_coord] = ...
     findColouredPuck(mask_blue,square_center_img,2,tform_img,tform_world,'blue');
 
+figure(6)
 hold on
 plot(blue_puck_img_coord(:,1),blue_puck_img_coord(:,2),'b*','MarkerSize',30)
 
@@ -207,6 +240,7 @@ plot(blue_puck_img_coord(:,1),blue_puck_img_coord(:,2),'b*','MarkerSize',30)
 [green_puck_img_coord,green_puck_cell_coord,green_puck_world_coord] = ...
     findColouredPuck(mask_green,square_center_img,2,tform_img,tform_world,'green');
 
+figure(7)
 hold on
 plot(green_puck_img_coord(:,1),green_puck_img_coord(:,2),'g*','MarkerSize',30)
 
