@@ -8,64 +8,104 @@ close all
 
 % Load File
 
-filenames = strcat({'3','4','5'},'.jpg')
+% filenames = strcat({'3','4','5'},'.jpg')
+% filenames = strcat({'Pink_edges'},'.jpg')
 
 % Load from Camera
 % 
-% camList = webcamlist;
-% cam = webcam(1);
-% 
-% preview(cam)
+camList = webcamlist;
+cam = webcam(3);
+ 
+preview(cam)
 
+%%
 images = {};
 images_hsv = {};
-image_folder = 'H:\MTRN4320\GitHub\Project-2\webcamImages\';
+image_folder = 'C:\Users\jcurl\OneDrive - UNSW\Uni 2023\Term 2\MTRN4230\MATLAB\Github\Project-2\Project-2\webcamImages\';
 
-for i = 1:length(filenames)
-    images{i} = imread(filenames{i});
-    images_hsv{i} = rgb2hsv(images{i});
-    
-    webcam_filename = strcat(image_folder,string(i),'.mat')
-    save(webcam_filename,"images");
-    figure(1);
-    imshow(images_hsv{i})
-end
+% for i = 1:length(filenames)
+%     images{i} = imread(filenames{i});
+%     images_hsv{i} = rgb2hsv(images{i});
+% 
+%     webcam_filename = strcat(image_folder,string(i),'.mat')
+%     save(webcam_filename,"images");
+%     figure(1);
+%     imshow(images_hsv{i})
+% end
 
 %%% Don't Start Until Ready
 % prompt = 'Start';
 % inputCommand = input(prompt)
 % 
 % i = 1;
-% while true
-    %images{end+1} = snapshot(cam);
-%   webcam_filename = strcat(image_folder,string(i),'.mat')
+for i = 1:100
+    images{i} = snapshot(cam);
+    images_hsv{i} = rgb2hsv(images{i});
+    webcam_filename = strcat(image_folder,string(i),'.mat')
     save(webcam_filename,"images");
-%   
-    % i = i+1;
-%     %% CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
-% end
+
+    figure(1);
+    imshow(images_hsv{i})
+    % CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
+end
 % 
+
+
+%% Grab Images Of Same Board
+j = [52:53];
+
+clear
+clc
+close all
+
+load("53.mat");
+
+images{1} = images;
+load("54.mat");
+
+
+images{2} = images;
+load("55.mat");
+
+
+images{3} = images;
+
+for i = 1:2
+    images_hsv{i} = rgb2hsv(images{i});
+  % webcam_filename = strcat(image_folder,string(i),'.mat')
+    % save(webcam_filename,"images");
+
+    figure(1);
+    imshow(images_hsv{i})
+    % CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
+end
+
 %% Create Masks
 
 % Mask for Purple Circles
-h_purple = [0.75 0.79];
-s_purple = [0.54 0.58];
-v_purple = [0.4 0.6];
+h_purple = [0.78 0.85];
+s_purple = [0.3 0.9];
+v_purple = [0.3 0.5];
 
 % Mask for Yellow Corners
-h_yellow = [0.07 0.11];
-s_yellow = [0.5 0.65];
-v_yellow = [0.7 0.9];
+h_yellow = [0.04 0.15];
+s_yellow = [0.5 1];
+v_yellow = [0.65 1];
+
+% Mask for Pink Corners
+h_pink = [0.9 0.95];
+s_pink = [0.7 0.85];
+v_pink = [0.8 1];
 
 % Mask for Red Pucks
-h_red = [0.96 0.98];
-s_red = [0.6 0.85];
-v_red = [0.6 0.8];
+h_red = [0.95 0.97];
+s_red = [0.6 0.8];
+v_red = [0.55 1];
 
 % Mask for Blue Pucks
 h_blue = [0.6 0.7];
-s_blue = [0.7 0.9];
-v_blue = [0.6 0.7];
+s_blue = [0.3 1];
+v_blue = [0.55 1];
 
 % Mask for Green Pucks
 h_green = [0.3 0.4];
@@ -76,12 +116,12 @@ rgb = prism(6);
 hsv = rgb2hsv(rgb);
 
 centers_purple = {};
-centers_yellow = {};
+centers_pink = {};
 mask_purple = {};
 mask_yellow = {};
 
 purple_mask_figure = 2;
-yellow_mask_figure = 3;
+pink_mask_figure = 3;
 
 for idx = 1:length(images_hsv)
     % % Acquire a single image.
@@ -93,15 +133,21 @@ for idx = 1:length(images_hsv)
     mask_purple{idx} = createMaskAndShow(image_hsv,h_purple,s_purple,v_purple, ...
         purple_mask_figure);
     centers_purple{idx} = findCenters(mask_purple{idx});
+    
+    mask_pink{idx} = createMaskAndShow(image_hsv,h_pink,s_pink,v_pink, ...
+        pink_mask_figure);
+    centers_pink{idx} = findCenters(mask_pink{idx});
 
-    mask_yellow{idx} = createMaskAndShow(image_hsv,h_yellow,s_yellow,v_yellow, ...
-        yellow_mask_figure);
-    centers_yellow{idx} = findCenters(mask_yellow{idx});
+    % mask_yellow{idx} = createMaskAndShow(image_hsv,h_yellow,s_yellow,v_yellow, ...
+    %     yellow_mask_figure);
+    % centers_yellow{idx} = findCenters(mask_yellow{idx});
     
 end
 
 sum_centers_purple = zeros(4,2);
-sum_centers_yellow = zeros(4,2);
+% sum_centers_yellow = zeros(4,2);
+sum_centers_pink = zeros(4,2);
+
 
 for idx = 1:length(images_hsv)
     figure(2);
@@ -114,28 +160,40 @@ for idx = 1:length(images_hsv)
     sum_centers_purple(:,1) = sum_centers_purple(:,1) + centers_purple{idx}(:,1);
     sum_centers_purple(:,2) = sum_centers_purple(:,2) + centers_purple{idx}(:,2);
     
+    % figure(3);
+    % hold on
+    % plot(centers_yellow{idx}(:,1),centers_yellow{idx}(:,2),'*r-');
+    % % Get Sum of all Yellow Centers
+    % sum_centers_yellow(:,1) = sum_centers_yellow(:,1) + centers_yellow{idx}(:,1);
+    % sum_centers_yellow(:,2) = sum_centers_yellow(:,2) + centers_yellow{idx}(:,2);
+    % 
+
     figure(3);
     hold on
-    plot(centers_yellow{idx}(:,1),centers_yellow{idx}(:,2),'*r-');
+    plot(centers_pink{idx}(:,1),centers_pink{idx}(:,2),'*r-');
     % Get Sum of all Yellow Centers
-    sum_centers_yellow(:,1) = sum_centers_yellow(:,1) + centers_yellow{idx}(:,1);
-    sum_centers_yellow(:,2) = sum_centers_yellow(:,2) + centers_yellow{idx}(:,2);
+    sum_centers_pink(:,1) = sum_centers_pink(:,1) + centers_pink{idx}(:,1);
+    sum_centers_pink(:,2) = sum_centers_pink(:,2) + centers_pink{idx}(:,2);
     
 end
 
 % Get Averages
 average_centers_purple = sum_centers_purple./length(images_hsv)
-average_centers_yellow = sum_centers_yellow./length(images_hsv)
+% average_centers_yellow = sum_centers_yellow./length(images_hsv)
+average_centers_pink = sum_centers_pink./length(images_hsv)
 
 % Plot Averages of Each
 figure(2);
 hold on
-plot(average_centers_purple(:,1),average_centers_purple(:,2),'*g');
+plot(average_centers_purple(:,1),average_centers_purple(:,2),'*g-');
+% 
+% figure(3);
+% hold on
+% plot(average_centers_yellow(:,1),average_centers_yellow(:,2),'*g-');
 
 figure(3);
 hold on
-plot(average_centers_yellow(:,1),average_centers_yellow(:,2),'*g-');
-
+plot(average_centers_pink(:,1),average_centers_pink(:,2),'*g-');
 
 %% Conversion for world frame %%%%%
 point1 = [-250, 75];
@@ -160,16 +218,16 @@ world_img = [point1 ; point3 ; point2 ; point4];
 
 outputFrameImg = [590 380];
 
-tform_img = fitgeotrans(average_centers_yellow,world_img,'projective');
+tform_img = fitgeotrans(average_centers_pink,world_img,'projective');
 
-board_trans_img = imwarp(images_hsv{2},tform_img,'OutputView',imref2d(outputFrameImg));
-board_trans_img_rgb = imwarp(images{2},tform_img,'OutputView',imref2d(outputFrameImg));
+board_trans_img = imwarp(images_hsv{1},tform_img,'OutputView',imref2d(outputFrameImg));
+board_trans_img_rgb = imwarp(images{1},tform_img,'OutputView',imref2d(outputFrameImg));
 
 figure(4);
 imshow(board_trans_img);
 
 % Get Coordinates of Corners from Image
-board_corners_img = average_centers_yellow;
+board_corners_img = average_centers_pink;
 
 % Convert to World Coordinates
 board_corners_world = transformPointsForward(tform_world,board_corners_img);
@@ -183,7 +241,7 @@ board_corners_world = transformPointsForward(tform_world,board_corners_img);
 P_img = [0 0];
 
 P_original = transformPointsInverse(tform_img,P_img);
-P_world = transformImgToWorld(tform_img,tform_world,P_img);
+P_world = transformImgToWorld(tform_img.T,tform_world.T,P_img);
 
 figure(1)
 hold on
@@ -259,106 +317,22 @@ grid = putInGrid(grid,[1,5],4); % Goal Position
 
 display(grid')
 
-%% Move Robot %%%%%
-
-% % TCP Host and Port settings
-host = '127.0.0.1'; % THIS IP ADDRESS MUST BE USED FOR THE VIRTUAL BOX VM
-% host = '192.168.230.128'; % THIS IP ADDRESS MUST BE USED FOR THE VMWARE
-% host = '192.168.0.100'; % THIS IP ADDRESS MUST BE USED FOR THE REAL ROBOT
-rtdeport = 30003;
-% vacuumport = 63352;
-
-% Calling the constructor of rtde to setup tcp connction
-rtde = rtde(host,rtdeport);
-
-home = [-588.5,-133, 371, 2.2214, -2.2214, 0.00];
-
-rtde.movej(home);
-
-% Calling the constructor of vacuum to setup tcp connction
-% vacuum = vacuum(host,vacuumport);
-
-% corners = [];
-
-% for i = 1:length(board_corners_world)
-%     corners = cat(1,corners,[board_corners_world(i,1), board_corners_world(i,2), 20, 2.2214, -2.2214, 0.00])
-% end
-
-% for i = 1:length(blue_puck_world_coord)
-%     puck_blue = cat(1,corners,[board_corners_world(i,1), board_corners_world(i,2), 20, 2.2214, -2.2214, 0.00])
-% end
-% [[4,3,2,1]',corners]
-
-
-
-% pose1 = rtde.movej(pts(1,:));
-% pose2 = rtde.movej(pts(2,:));
-% pose3 = rtde.movej(pts(3,:));
-% pose4 = rtde.movej(pts(4,:));
-
-% poses = [pose1;pose2;pose3;pose4];
-% poses = [pose2;pose3;pose4];
-
-
-% Pick up Green Puck
-puck_green = [green_puck_world_coord(1), green_puck_world_coord(2), 20, 2.2214, -2.2214, 0.00];
-
-pose1 = rtde.movej(puck_green);
-
-% Move to bottom right
-
-pt = square_center_world{5,8}
-
-bottom_right = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
-
-pt = square_center_world{1,8}
-
-bottom_left = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
-
-pt = square_center_world{5,1}
-
-top_right = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
-
-pt = square_center_world{1,1}
-
-top_left = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
-
-pose1 = rtde.movel(bottom_right);
-pose2 = rtde.movel(bottom_left);
-pose3 = rtde.movel(top_left);
-pose4 = rtde.movel(top_right);
-
-poses = [pose1;pose2;pose3;pose4];
-% poses = [pose2;pose3];
-
-
-rtde.drawPath(poses);
-% yaxis([-0.9 0])
-% xaxis([-0.4 0.1])
-
-XMIN = -0.9;
-XMAX = -0.1;
-YMIN = -0.6;
-YMAX = 0.2;
-
-axis([XMIN XMAX YMIN YMAX])
-
-%% Part B - BUG 2
+% Part B - BUG 2
 
 % clear
 % clc
 % close all
 
-startup_rvc;
+% startup_rvc;
 % 
-% grid = [
-% 1 1 1 1 1 1 1 1 1 1;
-% 1 3 1 4 0 0 0 0 0 1;
-% 1 0 0 1 2 0 0 0 0 1;
-% 1 0 0 0 0 0 2 0 0 1;
-% 1 0 0 0 0 1 2 0 0 1;
-% 1 0 0 0 0 0 1 0 0 1;
-% 1 1 1 1 1 1 1 1 1 1];
+grid = [
+1 1 1 1 1 1 1 1 1 1;
+1 3 1 4 0 0 0 0 0 1;
+1 0 0 1 2 0 0 0 0 1;
+1 0 0 0 0 0 2 0 0 1;
+1 0 0 0 0 1 2 0 0 1;
+1 0 0 0 0 0 1 0 0 1;
+1 1 1 1 1 1 1 1 1 1];
 
 for i = 1:(length(grid(1,:))-1)
     for j = 1:(length(grid(:,1))-1)
@@ -384,6 +358,97 @@ bug.plot
 bug.plot_mline
 hold on
 plot(bug_path(:, 1), bug_path(:, 2),'LineWidth', 4, 'Color', 'g');
+
+%% Move Robot %%%%%
+
+% % TCP Host and Port settings
+host = '127.0.0.1'; % THIS IP ADDRESS MUST BE USED FOR THE VIRTUAL BOX VM
+% host = '192.168.230.128'; % THIS IP ADDRESS MUST BE USED FOR THE VMWARE
+% host = '192.168.0.100'; % THIS IP ADDRESS MUST BE USED FOR THE REAL ROBOT
+rtdeport = 30003;
+% vacuumport = 63352;
+
+% Calling the constructor of rtde to setup tcp connction
+rtde = rtde(host,rtdeport);
+
+home = [-588.5,-133, 371, 2.2214, -2.2214, 0.00];
+
+puck_height = 6;
+raised_height = 20;
+
+lowered = [0,0,puck_height, 2.2214, -2.2214, 0.00];
+raised = [0,0,raised_height, 2.2214, -2.2214, 0.00];
+
+rtde.movej(home);
+
+% Calling the constructor of vacuum to setup tcp connction
+% vacuum = vacuum(host,vacuumport);
+
+% pose1 = rtde.movej(pts(1,:));
+% pose2 = rtde.movej(pts(2,:));
+% pose3 = rtde.movej(pts(3,:));
+% pose4 = rtde.movej(pts(4,:));
+
+% poses = [pose1;pose2;pose3;pose4];
+% poses = [pose2;pose3;pose4];
+
+
+% Pick up Green Puck
+puck_green_lowered = [green_puck_world_coord(1), green_puck_world_coord(2), lowered(3:end)];
+puck_green_raised = [green_puck_world_coord(1), green_puck_world_coord(2), lowered(3:end)];
+
+
+pose1 = rtde.movel(puck_green_raised);
+pose2 = rtde.movel(puck_green_lowered);
+
+% vacuum.grip();
+% pause(3)
+
+pose3 = rtde.movel(puck_green_raised)
+
+pt = square_center_world{2,4}
+
+move_pt = [pt(1), pt(2), raised(3:end)];
+
+% Move to bottom right
+
+pt = square_center_world{5,8}
+
+bottom_right = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
+
+pt = square_center_world{1,8}
+
+bottom_left = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
+
+pt = square_center_world{5,1}
+
+top_right = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
+
+pt = square_center_world{1,1}
+
+top_left = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
+
+pose1 = rtde.movel(bottom_right);
+pose2 = rtde.movel(bottom_left);
+pose3 = rtde.movel(top_left);
+pose4 = rtde.movel(top_right);
+
+% Move to blue obstacles
+
+poses = [pose1;pose2;pose3;pose4];
+% poses = [pose2;pose3];
+
+
+rtde.drawPath(poses);
+% yaxis([-0.9 0])
+% xaxis([-0.4 0.1])
+
+XMIN = -0.9;
+XMAX = -0.1;
+YMIN = -0.6;
+YMAX = 0.2;
+
+axis([XMIN XMAX YMIN YMAX])
 
 %%
 
@@ -443,7 +508,7 @@ function mask = createMaskAndShow(im_hsv,h,s,v,idx)
         (im_hsv(:,:,3) <= max(v))&(im_hsv(:,:,3) > min(v));
     se = strel('disk',7);
     mask = imclose(mask,se);
-    mask = bwareaopen(mask,100);
+    % mask = bwareaopen(mask,100);
 
     figure(idx);
     imshow(mask);
