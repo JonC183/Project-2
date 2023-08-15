@@ -8,10 +8,15 @@ close all
 
 % Load File
 
-filename = '4.jpg'
+filenames = strcat({'1','2','3','4','5','6'},'.jpg')
 
-image = imread(filename);
-image_hsv = rgb2hsv(image);
+images = {};
+for i = 1:length(filenames)
+    images{i} = imread(filenames{i});
+    images_hsv{i} = rgb2hsv(images{i});
+    figure(1);
+    imshow(images_hsv{i})
+end
 
 % Load from Camera
 % 
@@ -30,38 +35,77 @@ inputCommand = input(prompt)
     %%% CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
 % end
 % 
-
-rgb = prism(6);
-hsv = rgb2hsv(rgb);
-
-figure(1);
-imshow(image_hsv);
-
+%% Create Masks
 % Mask for Purple Circles
 h_purple = [0.75 0.79];
 s_purple = [0.54 0.58];
 v_purple = [0.4 0.6];
-
-mask_purple = createMaskAndShow(image_hsv,h_purple,s_purple,v_purple);
-centers_purple = findCenters(mask_purple);
-
-hold on
-plot(centers_purple(:,1),centers_purple(:,2),'*r');
-hold off
 
 % Mask for Yellow Corners
 h_yellow = [0.07 0.11];
 s_yellow = [0.5 0.65];
 v_yellow = [0.7 0.9];
 
-mask_yellow = createMaskAndShow(image_hsv,h_yellow,s_yellow,v_yellow);
-centers_yellow = findCenters(mask_yellow);
+% Mask for Red Pucks
+h_red = [0.96 0.98];
+s_red = [0.6 0.85];
+v_red = [0.6 0.8];
 
-hold on
-plot(centers_yellow(:,1),centers_yellow(:,2),'*r');
-hold off
+% Mask for Blue Pucks
+h_blue = [0.6 0.7];
+s_blue = [0.7 0.9];
+v_blue = [0.6 0.7];
 
-%%%% Conversion for world frame %%%%%
+% Mask for Green Pucks
+h_green = [0.3 0.4];
+s_green = [0.8 1];
+v_green = [0.5 0.7];
+
+rgb = prism(6);
+hsv = rgb2hsv(rgb);
+
+centers_purple = {};
+centers_yellow = {};
+mask_purple = {};
+mask_yellow = {};
+
+purple_mask_figure = 2;
+yellow_mask_figure = 3;
+
+for idx = 1:length(images_hsv)
+    % % Acquire a single image.
+    % image = snapshot(cam);
+    % image_hsv = rgb2hsv(image);
+    image_hsv = images_hsv{idx};
+
+   
+    
+    % Display the image.
+    mask_purple{idx} = createMaskAndShow(image_hsv,h_purple,s_purple,v_purple, ...
+        purple_mask_figure);
+    centers_purple{idx} = findCenters(mask_purple{idx});
+
+    mask_yellow{idx} = createMaskAndShow(image_hsv,h_yellow,s_yellow,v_yellow, ...
+        yellow_mask_figure);
+    centers_yellow{idx} = findCenters(mask_yellow{idx});
+
+    save(image_hsv)
+    
+end
+
+for idx = 1:length(images_hsv)
+    figure(2);
+    hold on
+    plot(centers_purple{idx}(:,1),centers_purple{idx}(:,2),'*r');
+    figure(3);
+    hold on
+    plot(centers_yellow{idx}(:,1),centers_yellow{idx}(:,2),'*r-');
+end
+
+% Get Average For Purple Centers
+
+
+%% Conversion for world frame %%%%%
 point1 = [-250, 75];
 point2 = [-250, -525];
 point3 = [-900, 75];
@@ -141,13 +185,11 @@ for row = 1:num_rows
     end
 end
 
-%%%% Detect Red Pucks %%%%
-h_red = [0.96 0.98];
-s_red = [0.6 0.85];
-v_red = [0.6 0.8];
-
 mask_red = createMaskAndShow(board_trans_img,h_red,s_red,v_red);
+mask_blue = createMaskAndShow(board_trans_img,h_blue,s_blue,v_blue);
+mask_green = createMaskAndShow(board_trans_img,h_green,s_green,v_green);
 
+%%%% Detect Red Pucks %%%%
 [red_puck_img_coord,red_puck_cell_coord,red_puck_world_coord] = ...
     findColouredPuck(mask_red,square_center_img,2,tform_img,tform_world,'red');
 
@@ -155,26 +197,13 @@ hold on
 plot(red_puck_img_coord(:,1),red_puck_img_coord(:,2),'r*','MarkerSize',30)
 
 %%%% Detect Blue Pucks %%%%
-h_blue = [0.6 0.7];
-s_blue = [0.7 0.9];
-v_blue = [0.6 0.7];
-
-mask_blue = createMaskAndShow(board_trans_img,h_blue,s_blue,v_blue)
-
 [blue_puck_img_coord,blue_puck_cell_coord,blue_puck_world_coord] = ...
     findColouredPuck(mask_blue,square_center_img,2,tform_img,tform_world,'blue');
 
 hold on
 plot(blue_puck_img_coord(:,1),blue_puck_img_coord(:,2),'b*','MarkerSize',30)
 
-
 %%%% Detect Green Puck %%%%
-h_green = [0.3 0.4];
-s_green = [0.8 1];
-v_green = [0.5 0.7];
-
-mask_green = createMaskAndShow(board_trans_img,h_green,s_green,v_green);
-
 [green_puck_img_coord,green_puck_cell_coord,green_puck_world_coord] = ...
     findColouredPuck(mask_green,square_center_img,2,tform_img,tform_world,'green');
 
@@ -373,7 +402,7 @@ end
 
 end
 
-function mask = createMaskAndShow(im_hsv,h,s,v)
+function mask = createMaskAndShow(im_hsv,h,s,v,idx)
     
     mask =  (im_hsv(:,:,1) <= max(h))&(im_hsv(:,:,1) > min(h))&...
         (im_hsv(:,:,2) <= max(s))&(im_hsv(:,:,2) > min(s))&...
@@ -382,20 +411,20 @@ function mask = createMaskAndShow(im_hsv,h,s,v)
     mask = imclose(mask,se);
     mask = bwareaopen(mask,100);
 
-    figure;
-    imshow(mask)
+    figure(idx);
+    imshow(mask);
 end
 
 function centers = findCenters(mask)
     
     % Find Circles and Return Centers
-    blobs = regionprops(mask,'Centroid')
+    blobs = regionprops(mask,'Centroid');
     
     centers = [blobs(1).Centroid ; blobs(2).Centroid ; blobs(3).Centroid ...
-        ; blobs(4).Centroid]
+        ; blobs(4).Centroid];
     
     % Order Coordinates
     centers = sortrows(centers,1);
-    centers = [sortrows(centers(1:2,:),2);sortrows(centers(3:4,:),2);]
+    centers = [sortrows(centers(1:2,:),2);sortrows(centers(3:4,:),2);];
 
 end
