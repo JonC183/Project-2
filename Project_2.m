@@ -41,38 +41,33 @@ image_folder = 'C:\Users\jcurl\OneDrive - UNSW\Uni 2023\Term 2\MTRN4230\MATLAB\G
 for i = 1:100
     images{i} = snapshot(cam);
     images_hsv{i} = rgb2hsv(images{i});
-    webcam_filename = strcat(image_folder,string(i),'.mat')
-    save(webcam_filename,"images");
 
     figure(1);
     imshow(images_hsv{i})
     % CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
 end
-% 
+
+webcam_filename = strcat(image_folder,'test.mat')
+save(webcam_filename,"images");
 
 
 %% Grab Images Of Same Board
-j = [52:53];
 
-clear
+
+clear all
 clc
 close all
 
-load("53.mat");
+load(['20.mat']);
 
-images{1} = images;
-load("54.mat");
+% Grab Images of the Index
+img_idx = [2:12];
 
-
-images{2} = images;
-load("55.mat");
-
-
-images{3} = images;
-
-for i = 1:2
-    images_hsv{i} = rgb2hsv(images{i});
-  % webcam_filename = strcat(image_folder,string(i),'.mat')
+for i = 1:length(img_idx)
+    images_hsv{i} = rgb2hsv(images{img_idx(i)});
+    % images_hsv{i} = rgb2hsv(images{i+1});
+    
+    % webcam_filename = strcat(image_folder,string(i),'.mat')
     % save(webcam_filename,"images");
 
     figure(1);
@@ -80,12 +75,15 @@ for i = 1:2
     % CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
 end
 
+figure(1);
+imshow(images_hsv{end});
+
 %% Create Masks
 
 % Mask for Purple Circles
 h_purple = [0.78 0.85];
 s_purple = [0.3 0.9];
-v_purple = [0.3 0.5];
+v_purple = [0.3 0.6];
 
 % Mask for Yellow Corners
 h_yellow = [0.04 0.15];
@@ -94,23 +92,8 @@ v_yellow = [0.65 1];
 
 % Mask for Pink Corners
 h_pink = [0.9 0.95];
-s_pink = [0.7 0.85];
+s_pink = [0.67 0.88];
 v_pink = [0.8 1];
-
-% Mask for Red Pucks
-h_red = [0.95 0.97];
-s_red = [0.6 0.8];
-v_red = [0.55 1];
-
-% Mask for Blue Pucks
-h_blue = [0.6 0.7];
-s_blue = [0.3 1];
-v_blue = [0.55 1];
-
-% Mask for Green Pucks
-h_green = [0.3 0.4];
-s_green = [0.8 1];
-v_green = [0.5 0.7];
 
 rgb = prism(6);
 hsv = rgb2hsv(rgb);
@@ -131,11 +114,11 @@ for idx = 1:length(images_hsv)
 
     % Display the image.
     mask_purple{idx} = createMaskAndShow(image_hsv,h_purple,s_purple,v_purple, ...
-        purple_mask_figure);
+        purple_mask_figure,'purple');
     centers_purple{idx} = findCenters(mask_purple{idx});
     
     mask_pink{idx} = createMaskAndShow(image_hsv,h_pink,s_pink,v_pink, ...
-        pink_mask_figure);
+        pink_mask_figure,'pink');
     centers_pink{idx} = findCenters(mask_pink{idx});
 
     % mask_yellow{idx} = createMaskAndShow(image_hsv,h_yellow,s_yellow,v_yellow, ...
@@ -148,6 +131,27 @@ sum_centers_purple = zeros(4,2);
 % sum_centers_yellow = zeros(4,2);
 sum_centers_pink = zeros(4,2);
 
+outliers = zeros(length(images_hsv),1);
+
+% Remove Outliers
+for j = 1:length(centers_purple)
+    for pt = 1:4
+        points{pt}(j,:) = centers_purple{j}(pt,:)
+    end
+end
+
+for pt = 1:4
+    [outlier,L,U,C] = isoutlier(points{1,pt})
+    display([points{1,pt} outlier])
+    outlier = outlier(:,1) + outlier(:,2)
+    outliers = outliers + outlier;
+end
+
+% Averages at start value
+% average_centers_purple = centers_purple{1};
+% average_centers_pink = centers_pink{1};
+
+n_sum = 0;
 
 for idx = 1:length(images_hsv)
     figure(2);
@@ -157,9 +161,13 @@ for idx = 1:length(images_hsv)
 %     if (centers_purple{idx}(:,1) - centers_purple{idx - 1,:})
 %         
 %     end
-    sum_centers_purple(:,1) = sum_centers_purple(:,1) + centers_purple{idx}(:,1);
-    sum_centers_purple(:,2) = sum_centers_purple(:,2) + centers_purple{idx}(:,2);
     
+    % Get Rid of Outliers
+    if (outliers(idx) == 0)
+        sum_centers_purple(:,1) = sum_centers_purple(:,1) + centers_purple{idx}(:,1);
+        sum_centers_purple(:,2) = sum_centers_purple(:,2) + centers_purple{idx}(:,2);
+        n_sum = n_sum + 1;
+    end
     % figure(3);
     % hold on
     % plot(centers_yellow{idx}(:,1),centers_yellow{idx}(:,2),'*r-');
@@ -171,16 +179,19 @@ for idx = 1:length(images_hsv)
     figure(3);
     hold on
     plot(centers_pink{idx}(:,1),centers_pink{idx}(:,2),'*r-');
-    % Get Sum of all Yellow Centers
-    sum_centers_pink(:,1) = sum_centers_pink(:,1) + centers_pink{idx}(:,1);
-    sum_centers_pink(:,2) = sum_centers_pink(:,2) + centers_pink{idx}(:,2);
+    % Get Sum of outliers
+    if (outliers(idx) == 0)
+        sum_centers_pink(:,1) = sum_centers_pink(:,1) + centers_pink{idx}(:,1);
+        sum_centers_pink(:,2) = sum_centers_pink(:,2) + centers_pink{idx}(:,2);
+    end
+
     
 end
 
 % Get Averages
-average_centers_purple = sum_centers_purple./length(images_hsv)
+average_centers_purple = sum_centers_purple./n_sum;
 % average_centers_yellow = sum_centers_yellow./length(images_hsv)
-average_centers_pink = sum_centers_pink./length(images_hsv)
+average_centers_pink = sum_centers_pink./n_sum;
 
 % Plot Averages of Each
 figure(2);
@@ -196,6 +207,24 @@ hold on
 plot(average_centers_pink(:,1),average_centers_pink(:,2),'*g-');
 
 %% Conversion for world frame %%%%%
+
+variables_folder = 'C:\Users\jcurl\OneDrive - UNSW\Uni 2023\Term 2\MTRN4230\MATLAB\Github\Project-2\Project-2\savedVariables\';
+
+% Mask for Red Pucks
+h_red = [0.95 0.99];
+s_red = [0.6 0.98];
+v_red = [0.55 1];
+
+% Mask for Blue Pucks
+h_blue = [0.6 0.7];
+s_blue = [0.3 1];
+v_blue = [0.55 1];
+
+% Mask for Green Pucks
+h_green = [0.3 0.4];
+s_green = [0.8 1];
+v_green = [0.4 0.7];
+
 point1 = [-250, 75];
 point2 = [-250, -525];
 point3 = [-900, 75];
@@ -226,11 +255,16 @@ board_trans_img_rgb = imwarp(images{1},tform_img,'OutputView',imref2d(outputFram
 figure(4);
 imshow(board_trans_img);
 
+
 % Get Coordinates of Corners from Image
 board_corners_img = average_centers_pink;
 
 % Convert to World Coordinates
 board_corners_world = transformPointsForward(tform_world,board_corners_img);
+
+%%% SAVE BOARD CORNERS %%%
+webcam_filename = strcat(variables_folder,'board_corners.mat')
+save(webcam_filename,"board_corners_img","board_corners_world");
 
 % Produce Transform for Transformed Image to World
 % trans_T_world = trans_T_original*original_T_world
@@ -241,7 +275,7 @@ board_corners_world = transformPointsForward(tform_world,board_corners_img);
 P_img = [0 0];
 
 P_original = transformPointsInverse(tform_img,P_img);
-P_world = transformImgToWorld(tform_img.T,tform_world.T,P_img);
+P_world = transformImgToWorld(tform_img,tform_world,P_img);
 
 figure(1)
 hold on
@@ -253,7 +287,7 @@ num_cols = 8;
 cols_size = round(outputFrameImg(1)/num_cols);
 rows_size = round(outputFrameImg(2)/num_rows);
 
-square_center_img = {};
+square_center_img = {zeros(num_rows,num_cols)};
 square_kernel_img = {};
 square_center_world = {};
 
@@ -261,7 +295,9 @@ figure(4)
 for row = 1:num_rows
     for col = 1:num_cols
         point = [(rows_size*row - round(rows_size/2))...
-            (cols_size*col - round(cols_size/2))];
+            (cols_size*(num_cols+1 - col) - round(cols_size/2))];
+        % Reversed order along cols to all bottom left square to be cell
+        % [1,1]
 
         square_center_img{row,col} = point;
         
@@ -274,9 +310,9 @@ for row = 1:num_rows
     end
 end
 
-mask_red = createMaskAndShow(board_trans_img,h_red,s_red,v_red,5);
-mask_blue = createMaskAndShow(board_trans_img,h_blue,s_blue,v_blue,6);
-mask_green = createMaskAndShow(board_trans_img,h_green,s_green,v_green,7);
+mask_red = createMaskAndShow(board_trans_img,h_red,s_red,v_red,5,'red');
+mask_blue = createMaskAndShow(board_trans_img,h_blue,s_blue,v_blue,6,'blue');
+mask_green = createMaskAndShow(board_trans_img,h_green,s_green,v_green,7,'green');
 
 %%%% Detect Red Pucks %%%%
 [red_puck_img_coord,red_puck_cell_coord,red_puck_world_coord] = ...
@@ -302,6 +338,10 @@ figure(7)
 hold on
 plot(green_puck_img_coord(:,1),green_puck_img_coord(:,2),'g*','MarkerSize',30)
 
+%%% SAVE PUCK VARIABLES %%%
+variables_filename = strcat(variables_folder,'pucks.mat')
+save(variables_filename,"");
+
 display(green_puck_cell_coord)
 
 %%%%% Create Grid %%%%%
@@ -312,19 +352,29 @@ grid = putInGrid(grid,blue_puck_cell_coord,2);
 grid = putInGrid(grid,green_puck_cell_coord,3);
 
 % grid = putInGrid(grid,[5 7],1)
-grid = putInGrid(grid,[1,5],4); % Goal Position
+
+x_cell = 5;
+y_cell = 5;
+grid = putInGrid(grid,[x_cell,y_cell],4); % Goal Position
+
+% flip grid along vertical axis
+
+% Plot Goal on Grid
+figure(4);
+hold on
+plot(square_center_img{5,5}(1),square_center_img{5,5}(2),'markersize',20)
 
 
 display(grid')
 
-% Part B - BUG 2
+%% Part B - BUG 2
 
 % clear
 % clc
 % close all
 
 % startup_rvc;
-% 
+
 grid = [
 1 1 1 1 1 1 1 1 1 1;
 1 3 1 4 0 0 0 0 0 1;
@@ -349,6 +399,8 @@ for i = 1:(length(grid(1,:))-1)
 end
 
 bug = myBug2(grid');
+
+figure;
 bug.plot();
 
 bug_path = bug.query(start,goal,'animate')
@@ -501,17 +553,18 @@ end
 
 end
 
-function mask = createMaskAndShow(im_hsv,h,s,v,idx)
+function mask = createMaskAndShow(im_hsv,h,s,v,idx,colour)
     
     mask =  (im_hsv(:,:,1) <= max(h))&(im_hsv(:,:,1) > min(h))&...
         (im_hsv(:,:,2) <= max(s))&(im_hsv(:,:,2) > min(s))&...
         (im_hsv(:,:,3) <= max(v))&(im_hsv(:,:,3) > min(v));
-    se = strel('disk',7);
+    se = strel('disk',3);
     mask = imclose(mask,se);
-    % mask = bwareaopen(mask,100);
+    % mask = bwareaopen(mask,50);
 
     figure(idx);
     imshow(mask);
+    title(colour);
 end
 
 function centers = findCenters(mask)
@@ -526,4 +579,9 @@ function centers = findCenters(mask)
     centers = sortrows(centers,1);
     centers = [sortrows(centers(1:2,:),2);sortrows(centers(3:4,:),2);];
 
+end
+
+function P_world = transformImgToWorld(tform_img,tform_world,P_img)
+    P_original = transformPointsInverse(tform_img,P_img)
+    P_world = transformPointsForward(tform_world,P_original)
 end

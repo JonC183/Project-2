@@ -174,6 +174,7 @@ classdef myBug2 < Navigation
                 else
                     % no, append it to the path
                     path = [path robot(:)];
+                    % [path ; bug.heading']
                 end
             end
             
@@ -292,7 +293,7 @@ classdef myBug2 < Navigation
                     end
                     %%% Else stay on path and keep heading the same
                 elseif ~bug.detectWall(robot,leftWallCoord)  
-                        bug.turnHeadingLeft(dirs);                       
+                        bug.turnHeadingLeft(dirs);            
                 end 
                 
                 % Test new position to see if there is an obstacle
