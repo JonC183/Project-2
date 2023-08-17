@@ -14,14 +14,15 @@ close all
 % Load from Camera
 % 
 camList = webcamlist;
-cam = webcam(3);
+cam = webcam(1);
  
 preview(cam)
 
-%%
+%
 images = {};
 images_hsv = {};
-image_folder = 'C:\Users\jcurl\OneDrive - UNSW\Uni 2023\Term 2\MTRN4230\MATLAB\Github\Project-2\Project-2\webcamImages\';
+% image_folder = 'webcamImages/';
+image_folder = '';
 
 % for i = 1:length(filenames)
 %     images{i} = imread(filenames{i});
@@ -38,7 +39,7 @@ image_folder = 'C:\Users\jcurl\OneDrive - UNSW\Uni 2023\Term 2\MTRN4230\MATLAB\G
 % inputCommand = input(prompt)
 % 
 % i = 1;
-for i = 1:100
+for i = 1:30
     images{i} = snapshot(cam);
     images_hsv{i} = rgb2hsv(images{i});
 
@@ -58,13 +59,13 @@ clear all
 clc
 close all
 
-load('webcamImages\20.mat');
+load('test.mat');
 
 % Grab Images of the Index
-img_idx = [2:12];
+img_idx = [5:30];
 
 for i = 1:length(img_idx)
-    images_hsv{i} = rgb2hsv(images{img_idx(i)});
+    images_hsv{i} = rgb2hsv(images{img_idx(i)}(:,200:1400,:));
     % images_hsv{i} = rgb2hsv(images{i+1});
     
     % webcam_filename = strcat(image_folder,string(i),'.mat')
@@ -81,8 +82,8 @@ imshow(images_hsv{end});
 % Create Masks
 
 % Mask for Purple Circles
-h_purple = [0.78 0.85];
-s_purple = [0.3 0.9];
+h_purple = [0.76 0.80];
+s_purple = [0.46 0.7];
 v_purple = [0.3 0.6];
 
 % Mask for Yellow Corners
@@ -90,10 +91,17 @@ h_yellow = [0.04 0.15];
 s_yellow = [0.5 1];
 v_yellow = [0.65 1];
 
-% Mask for Pink Corners
-h_pink = [0.9 0.95];
-s_pink = [0.67 0.88];
-v_pink = [0.8 1];
+% % Mask for Pink Corners
+% h_pink = [0.9 0.95];
+% s_pink = [0.67 0.88];
+% v_pink = [0.8 1];
+
+% Mask for Orange Corners
+h_orange = [0 0.1];
+s_orange = [0.5 0.75];
+v_orange = [0.8 1];
+
+
 
 rgb = prism(6);
 hsv = rgb2hsv(rgb);
@@ -101,10 +109,11 @@ hsv = rgb2hsv(rgb);
 centers_purple = {};
 centers_pink = {};
 mask_purple = {};
-mask_yellow = {};
+mask_orange = {};
 
 purple_mask_figure = 2;
-pink_mask_figure = 3;
+orange_mask_figure = 3;
+
 
 for idx = 1:length(images_hsv)
     % % Acquire a single image.
@@ -116,16 +125,25 @@ for idx = 1:length(images_hsv)
     mask_purple{idx} = createMaskAndShow(image_hsv,h_purple,s_purple,v_purple, ...
         purple_mask_figure,'purple');
     centers_purple{idx} = findCenters(mask_purple{idx});
-    
-    mask_pink{idx} = createMaskAndShow(image_hsv,h_pink,s_pink,v_pink, ...
-        pink_mask_figure,'pink');
-    centers_pink{idx} = findCenters(mask_pink{idx});
+%     
+%     mask_pink{idx} = createMaskAndShow(image_hsv,h_pink,s_pink,v_pink, ...
+%         pink_mask_figure,'pink');
+%     centers_pink{idx} = findCenters(mask_pink{idx});
 
+    
+    mask_pink{idx} = createMaskAndShow(image_hsv,h_orange,s_orange,v_orange, ...
+        orange_mask_figure,'pink');
+    centers_pink{idx} = findCenters(mask_pink{idx});
+    
     % mask_yellow{idx} = createMaskAndShow(image_hsv,h_yellow,s_yellow,v_yellow, ...
     %     yellow_mask_figure);
     % centers_yellow{idx} = findCenters(mask_yellow{idx});
     
 end
+
+sum_centers_purple = zeros(4,2);
+% sum_centers_yellow = zeros(4,2);
+sum_centers_pink = zeros(4,2);
 
 sum_centers_purple = zeros(4,2);
 % sum_centers_yellow = zeros(4,2);
@@ -140,6 +158,8 @@ for j = 1:length(centers_purple)
     end
 end
 
+% Bug with this method since if points are aronud same
+% area it will still count
 for pt = 1:4
     [outlier,L,U,C] = isoutlier(points{1,pt})
     display([points{1,pt} outlier])
@@ -163,7 +183,7 @@ for idx = 1:length(images_hsv)
 %     end
     
     % Get Rid of Outliers
-    if (outliers(idx) == 0)
+    if ((outliers(idx) == 0) && (length(centers_purple{idx}(:,1)) == 4) && (length(centers_pink{idx}(:,1)) == 4))
         sum_centers_purple(:,1) = sum_centers_purple(:,1) + centers_purple{idx}(:,1);
         sum_centers_purple(:,2) = sum_centers_purple(:,2) + centers_purple{idx}(:,2);
         n_sum = n_sum + 1;
@@ -177,10 +197,12 @@ for idx = 1:length(images_hsv)
     % 
 
     figure(3);
+    imshow(mask_pink{idx});
+    title('Pink');
     hold on
     plot(centers_pink{idx}(:,1),centers_pink{idx}(:,2),'*r-');
     % Get Sum of outliers
-    if (outliers(idx) == 0)
+    if ((outliers(idx) == 0) && (length(centers_purple{idx}(:,1)) == 4) && (length(centers_pink{idx}(:,1)) == 4))
         sum_centers_pink(:,1) = sum_centers_pink(:,1) + centers_pink{idx}(:,1);
         sum_centers_pink(:,2) = sum_centers_pink(:,2) + centers_pink{idx}(:,2);
     end
@@ -191,7 +213,8 @@ end
 % Get Averages
 average_centers_purple = sum_centers_purple./n_sum;
 % average_centers_yellow = sum_centers_yellow./length(images_hsv)
-average_centers_pink = sum_centers_pink./n_sum;
+% average_centers_pink = sum_centers_pink./n_sum;
+average_centers_pink = centers_pink{1,11};
 
 % Plot Averages of Each
 figure(2);
@@ -208,7 +231,8 @@ plot(average_centers_pink(:,1),average_centers_pink(:,2),'*g-');
 
 % Conversion for world frame %%%%%
 
-variables_folder = 'H:\MTRN4320\GitHub\Project-2\savedVariables\';
+% variables_folder = 'H:\MTRN4320\GitHub\Project-2\savedVariables\';
+variables_folder = '';
 
 % Mask for Red Pucks
 h_red = [0.95 0.99];
@@ -361,7 +385,7 @@ save(variables_filename,"green_puck_img_coord","green_puck_cell_coord","green_pu
 display("Green puck at;")
 display(green_puck_cell_coord)
 
-%%%%% Create Grid %%%%%
+%% Create Grid %%%%%
 grid = [ones(1,10) ; [ones(5,1) zeros(5,8) ones(5,1)] ; ones(1,10)];
 
 grid = putInGrid(grid,red_puck_cell_coord,1);
@@ -371,11 +395,11 @@ grid = putInGrid(grid,green_puck_cell_coord,3);
 % grid = putInGrid(grid,[5 7],1)
 
 x_cell = 5;
-y_cell = 5;
+y_cell = 6;
 grid = putInGrid(grid,[x_cell,y_cell],4); % Goal Position
 
 % flip grid 90 degrees
-grid = rot90(grid,-1)
+% grid = rot90(grid,-1)
 
 % Plot Goal on Grid
 figure(4);
@@ -384,20 +408,31 @@ plot(square_center_img{5,5}(1),square_center_img{5,5}(2),'r*','markersize',20)
 
 %% Part B - BUG 2
 
-% clear
-% clc
-% close all
+% variables_folder = 'savedVariables\';
+variables_folder = '';
 
-% startup_rvc;
+startup_rvc;
+% 
+% grid = [
+% 1 1 1 1 1 1 1 1 1 1;
+% 1 3 1 4 0 0 0 0 0 1;
+% 1 0 0 1 2 0 0 0 0 1;
+% 1 0 0 0 0 0 2 0 0 1;
+% 1 0 0 0 0 1 2 0 0 1;
+% 1 0 0 0 0 0 1 0 0 1;
+% 1 1 1 1 1 1 1 1 1 1];
 
 grid = [
-1 1 1 1 1 1 1 1 1 1;
-1 3 1 4 0 0 0 0 0 1;
-1 0 0 1 2 0 0 0 0 1;
-1 0 0 0 0 0 2 0 0 1;
-1 0 0 0 0 1 2 0 0 1;
-1 0 0 0 0 0 1 0 0 1;
+1 1 1 1 1 1 1 1 1 1
+1 0 0 1 0 0 4 0 0 1
+1 3 0 1 0 0 0 0 0 1
+1 0 0 2 0 2 0 0 0 1
+1 0 0 1 0 1 0 0 0 1
+1 0 0 0 0 2 0 0 0 1
 1 1 1 1 1 1 1 1 1 1];
+
+% flip grid 90 degrees
+% grid = rot90(grid,-1)
 
 for i = 1:(length(grid(1,:))-1)
     for j = 1:(length(grid(:,1))-1)
@@ -413,7 +448,7 @@ for i = 1:(length(grid(1,:))-1)
     end
 end
 
-bug = myBug2(grid');
+bug = Bug2(grid');
 
 figure;
 bug.plot();
@@ -426,6 +461,14 @@ bug.plot_mline
 hold on
 plot(bug_path(:, 1), bug_path(:, 2),'LineWidth', 4, 'Color', 'g');
 
+% Convert bug_path to real coordinates
+bug_path(:,1) = bug_path(:,1) - 1
+bug_path(:,2) = bug_path(:,2) - 1
+
+%%% SAVE PUCK VARIABLES %%%
+variables_filename = strcat(variables_folder,'bug2_path.mat')
+save(variables_filename,"bug_path");
+
 %% Move Robot %%%%%
 
 clear all
@@ -433,25 +476,43 @@ clc
 close all
 
 % % TCP Host and Port settings
-host = '127.0.0.1'; % THIS IP ADDRESS MUST BE USED FOR THE VIRTUAL BOX VM
+% host = '127.0.0.1'; % THIS IP ADDRESS MUST BE USED FOR THE VIRTUAL BOX VM
 % host = '192.168.230.128'; % THIS IP ADDRESS MUST BE USED FOR THE VMWARE
-% host = '192.168.0.100'; % THIS IP ADDRESS MUST BE USED FOR THE REAL ROBOT
+host = '192.168.0.100'; % THIS IP ADDRESS MUST BE USED FOR THE REAL ROBOT
 rtdeport = 30003;
-% vacuumport = 63352;
 
-% load('\\savedVariables\blue_pucks.mat')
-load('savedVariables\blue_pucks.mat');
-load('savedVariables\red_pucks.mat')
-load('savedVariables\green_pucks.mat')
-load('savedVariables\board_corners.mat')
-load('savedVariables\Square_Centers.mat')
-load('savedVariables\board_trans.mat')
+vacuumport = 63352;
 
 % Calling the constructor of rtde to setup tcp connction
 rtde = rtde(host,rtdeport);
 
+% Calling the constructor of vacuum to setup tcp connction
+vacuum = vacuum(host,vacuumport);
+
+% load('\\savedVariables\blue_pucks.mat')
+% load('savedVariables\blue_pucks.mat');
+% load('savedVariables\red_pucks.mat');
+% load('savedVariables\green_pucks.mat');
+% load('savedVariables\board_corners.mat');
+% load('savedVariables\Square_Centers.mat');
+% load('savedVariables\board_trans.mat');
+% load('savedVariables\bug2_path.mat');
+
+load('blue_pucks.mat');
+load('red_pucks.mat');
+load('green_pucks.mat');
+load('board_corners.mat');
+load('Square_Centers.mat');
+load('board_trans.mat');
+load('bug2_path.mat');
+
 figure(1);
 imshow(board_trans_img);
+hold on
+
+for i = 1:length(bug_path)
+    plot(square_center_img{bug_path(i, 1)}(1),square_center_img{bug_path(i, 1)}(2),'g-');
+end
 
 home = [-588.5,-133, 371, 2.2214, -2.2214, 0.00];
 
@@ -463,8 +524,7 @@ raised = [0,0,raised_height, 2.2214, -2.2214, 0.00];
 
 rtde.movej(home);
 
-% Calling the constructor of vacuum to setup tcp connction
-% vacuum = vacuum(host,vacuumport);
+
 
 % pose1 = rtde.movej(pts(1,:));
 % pose2 = rtde.movej(pts(2,:));
@@ -473,45 +533,6 @@ rtde.movej(home);
 
 % poses = [pose1;pose2;pose3;pose4];
 % poses = [pose2;pose3;pose4];
-
-
-% Pick up Green Puck
-puck_green_lowered = [green_puck_world_coord(1), green_puck_world_coord(2), lowered(3:end)];
-puck_green_raised = [green_puck_world_coord(1), green_puck_world_coord(2), raised(3:end)];
-
-
-pose1 = rtde.movel(puck_green_raised);
-
-Prompt = 'At Green Puck Raised'
-input(Prompt)
-
-pose2 = rtde.movel(puck_green_lowered);
-
-
-Prompt = 'At Green Puck Lowered'
-input(Prompt)
-
-% vacuum.grip();
-% pause(3)
-
-pose3 = rtde.movel(puck_green_raised)
-
-Prompt = 'At Green Puck Raised'
-input(Prompt)
-
-poses = [pose1;pose2;pose3]
-
-figure(2);
-rtde.drawPath(poses);
-% yaxis([-0.9 0])
-% xaxis([-0.4 0.1])
-
-XMIN = -0.9;
-XMAX = -0.1;
-YMIN = -0.6;
-YMAX = 0.2;
-
-axis([XMIN XMAX YMIN YMAX])
 
 pt = square_center_world{2,4}
 
@@ -522,19 +543,19 @@ input(Prompt)
 
 % Move to bottom right
 
-pt = square_center_world{5,8}
+pt = square_center_world{1,1}
 
 bottom_right = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
 
-pt = square_center_world{1,8}
+pt = square_center_world{5,1}
 
 bottom_left = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
 
-pt = square_center_world{5,1}
+pt = square_center_world{5,8}
 
 top_right = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
 
-pt = square_center_world{1,1}
+pt = square_center_world{1,8}
 
 top_left = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
 
@@ -559,6 +580,72 @@ YMIN = -0.6;
 YMAX = 0.2;
 
 axis([XMIN XMAX YMIN YMAX])
+
+%%%%% Move Green Puck Using Bug2 %%%%%
+%%%% Pick up Green Puck %%%%
+puck_green_lowered = [green_puck_world_coord(1), green_puck_world_coord(2), lowered(3:end)];
+puck_green_raised = [green_puck_world_coord(1), green_puck_world_coord(2), raised(3:end)];
+
+pose1 = rtde.movel(puck_green_raised);
+
+Prompt = 'At Green Puck Raised'
+input(Prompt)
+
+pose2 = rtde.movel(puck_green_lowered);
+
+vacuum.grip();
+Prompt = 'At Green Puck Lowered'
+input(Prompt)
+
+pose3 = rtde.movel(puck_green_raised)
+
+Prompt = 'At Green Puck Raised'
+input(Prompt)
+
+poses = [pose1;pose2;pose3]
+
+figure(2);
+rtde.drawPath(poses);
+% yaxis([-0.9 0])
+% xaxis([-0.4 0.1])
+
+XMIN = -0.9;
+XMAX = -0.1;
+YMIN = -0.6;
+YMAX = 0.2;
+
+axis([XMIN XMAX YMIN YMAX])
+
+poses = [];
+
+for i = 1:length(bug_path)
+    pt = square_center_world{bug_path(i,1),bug_path(i,2)}
+    move_green = [pt(1), pt(2), raised(3:end)];
+    rtde.movel(move_green)
+end
+
+% figure(1);
+% rtde.drawPath(poses);
+% yaxis([-0.9 0])
+% xaxis([-0.4 0.1])
+
+XMIN = -0.9;
+XMAX = -0.1;
+YMIN = -0.6;
+YMAX = 0.2;
+
+axis([XMIN XMAX YMIN YMAX])
+
+final_green_lowered = [pt(1), pt(2), lowered(3:end)];
+
+pose2 = rtde.movel(final_green_lowered);
+
+vacuum.release();
+
+pause(3)
+
+final_green_raised = [pt(1), pt(2), raised(3:end)];
+pose2 = rtde.movel(final_green_raised);
 
 %%
 
@@ -618,7 +705,7 @@ function mask = createMaskAndShow(im_hsv,h,s,v,idx,colour)
         (im_hsv(:,:,3) <= max(v))&(im_hsv(:,:,3) > min(v));
     se = strel('disk',3);
     mask = imclose(mask,se);
-    % mask = bwareaopen(mask,50);
+    mask = bwareaopen(mask,30);
 
     figure(idx);
     imshow(mask);
