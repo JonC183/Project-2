@@ -58,7 +58,7 @@ clear all
 clc
 close all
 
-load(['20.mat']);
+load('webcamImages\20.mat');
 
 % Grab Images of the Index
 img_idx = [2:12];
@@ -78,7 +78,7 @@ end
 figure(1);
 imshow(images_hsv{end});
 
-%% Create Masks
+% Create Masks
 
 % Mask for Purple Circles
 h_purple = [0.78 0.85];
@@ -206,9 +206,9 @@ figure(3);
 hold on
 plot(average_centers_pink(:,1),average_centers_pink(:,2),'*g-');
 
-%% Conversion for world frame %%%%%
+% Conversion for world frame %%%%%
 
-variables_folder = 'C:\Users\jcurl\OneDrive - UNSW\Uni 2023\Term 2\MTRN4230\MATLAB\Github\Project-2\Project-2\savedVariables\';
+variables_folder = 'H:\MTRN4320\GitHub\Project-2\savedVariables\';
 
 % Mask for Red Pucks
 h_red = [0.95 0.99];
@@ -249,12 +249,15 @@ outputFrameImg = [590 380];
 
 tform_img = fitgeotrans(average_centers_pink,world_img,'projective');
 
-board_trans_img = imwarp(images_hsv{1},tform_img,'OutputView',imref2d(outputFrameImg));
-board_trans_img_rgb = imwarp(images{1},tform_img,'OutputView',imref2d(outputFrameImg));
+board_trans_img = imwarp(images_hsv{end},tform_img,'OutputView',imref2d(outputFrameImg));
+board_trans_img_rgb = imwarp(images{end},tform_img,'OutputView',imref2d(outputFrameImg));
+
+%%% SAVE TRANS BOARD IMAGE %%%
+webcam_filename = strcat(variables_folder,'board_trans.mat')
+save(webcam_filename,"board_trans_img","board_trans_img_rgb");
 
 figure(4);
 imshow(board_trans_img);
-
 
 % Get Coordinates of Corners from Image
 board_corners_img = average_centers_pink;
@@ -310,6 +313,11 @@ for row = 1:num_rows
     end
 end
 
+%%% SAVE SQUARE CENTERS VARIABLES %%%
+variables_filename = strcat(variables_folder,'Square_Centers.mat')
+save(variables_filename,"square_center_img","square_center_world");
+
+
 mask_red = createMaskAndShow(board_trans_img,h_red,s_red,v_red,5,'red');
 mask_blue = createMaskAndShow(board_trans_img,h_blue,s_blue,v_blue,6,'blue');
 mask_green = createMaskAndShow(board_trans_img,h_green,s_green,v_green,7,'green');
@@ -318,6 +326,10 @@ mask_green = createMaskAndShow(board_trans_img,h_green,s_green,v_green,7,'green'
 [red_puck_img_coord,red_puck_cell_coord,red_puck_world_coord] = ...
     findColouredPuck(mask_red,square_center_img,2,tform_img,tform_world,'red');
 
+%%% SAVE PUCK VARIABLES %%%
+variables_filename = strcat(variables_folder,'red_pucks.mat')
+save(variables_filename,"red_puck_img_coord","red_puck_cell_coord","red_puck_world_coord");
+
 figure(5)
 hold on
 plot(red_puck_img_coord(:,1),red_puck_img_coord(:,2),'r*','MarkerSize',30)
@@ -325,6 +337,10 @@ plot(red_puck_img_coord(:,1),red_puck_img_coord(:,2),'r*','MarkerSize',30)
 %%%% Detect Blue Pucks %%%%
 [blue_puck_img_coord,blue_puck_cell_coord,blue_puck_world_coord] = ...
     findColouredPuck(mask_blue,square_center_img,2,tform_img,tform_world,'blue');
+
+%%% SAVE PUCK VARIABLES %%%
+variables_filename = strcat(variables_folder,'blue_pucks.mat')
+save(variables_filename,"blue_puck_img_coord","blue_puck_cell_coord","blue_puck_world_coord");
 
 figure(6)
 hold on
@@ -339,9 +355,10 @@ hold on
 plot(green_puck_img_coord(:,1),green_puck_img_coord(:,2),'g*','MarkerSize',30)
 
 %%% SAVE PUCK VARIABLES %%%
-variables_filename = strcat(variables_folder,'pucks.mat')
-save(variables_filename,"");
+variables_filename = strcat(variables_folder,'green_pucks.mat')
+save(variables_filename,"green_puck_img_coord","green_puck_cell_coord","green_puck_world_coord");
 
+display("Green puck at;")
 display(green_puck_cell_coord)
 
 %%%%% Create Grid %%%%%
@@ -357,15 +374,13 @@ x_cell = 5;
 y_cell = 5;
 grid = putInGrid(grid,[x_cell,y_cell],4); % Goal Position
 
-% flip grid along vertical axis
+% flip grid 90 degrees
+grid = rot90(grid,-1)
 
 % Plot Goal on Grid
 figure(4);
 hold on
-plot(square_center_img{5,5}(1),square_center_img{5,5}(2),'markersize',20)
-
-
-display(grid')
+plot(square_center_img{5,5}(1),square_center_img{5,5}(2),'r*','markersize',20)
 
 %% Part B - BUG 2
 
@@ -413,6 +428,10 @@ plot(bug_path(:, 1), bug_path(:, 2),'LineWidth', 4, 'Color', 'g');
 
 %% Move Robot %%%%%
 
+clear all
+clc
+close all
+
 % % TCP Host and Port settings
 host = '127.0.0.1'; % THIS IP ADDRESS MUST BE USED FOR THE VIRTUAL BOX VM
 % host = '192.168.230.128'; % THIS IP ADDRESS MUST BE USED FOR THE VMWARE
@@ -420,13 +439,24 @@ host = '127.0.0.1'; % THIS IP ADDRESS MUST BE USED FOR THE VIRTUAL BOX VM
 rtdeport = 30003;
 % vacuumport = 63352;
 
+% load('\\savedVariables\blue_pucks.mat')
+load('savedVariables\blue_pucks.mat');
+load('savedVariables\red_pucks.mat')
+load('savedVariables\green_pucks.mat')
+load('savedVariables\board_corners.mat')
+load('savedVariables\Square_Centers.mat')
+load('savedVariables\board_trans.mat')
+
 % Calling the constructor of rtde to setup tcp connction
 rtde = rtde(host,rtdeport);
+
+figure(1);
+imshow(board_trans_img);
 
 home = [-588.5,-133, 371, 2.2214, -2.2214, 0.00];
 
 puck_height = 6;
-raised_height = 20;
+raised_height = 50;
 
 lowered = [0,0,puck_height, 2.2214, -2.2214, 0.00];
 raised = [0,0,raised_height, 2.2214, -2.2214, 0.00];
@@ -447,20 +477,48 @@ rtde.movej(home);
 
 % Pick up Green Puck
 puck_green_lowered = [green_puck_world_coord(1), green_puck_world_coord(2), lowered(3:end)];
-puck_green_raised = [green_puck_world_coord(1), green_puck_world_coord(2), lowered(3:end)];
+puck_green_raised = [green_puck_world_coord(1), green_puck_world_coord(2), raised(3:end)];
 
 
 pose1 = rtde.movel(puck_green_raised);
+
+Prompt = 'At Green Puck Raised'
+input(Prompt)
+
 pose2 = rtde.movel(puck_green_lowered);
+
+
+Prompt = 'At Green Puck Lowered'
+input(Prompt)
 
 % vacuum.grip();
 % pause(3)
 
 pose3 = rtde.movel(puck_green_raised)
 
+Prompt = 'At Green Puck Raised'
+input(Prompt)
+
+poses = [pose1;pose2;pose3]
+
+figure(2);
+rtde.drawPath(poses);
+% yaxis([-0.9 0])
+% xaxis([-0.4 0.1])
+
+XMIN = -0.9;
+XMAX = -0.1;
+YMIN = -0.6;
+YMAX = 0.2;
+
+axis([XMIN XMAX YMIN YMAX])
+
 pt = square_center_world{2,4}
 
 move_pt = [pt(1), pt(2), raised(3:end)];
+
+Prompt = 'Going to Board Corners'
+input(Prompt)
 
 % Move to bottom right
 
@@ -490,7 +548,7 @@ pose4 = rtde.movel(top_right);
 poses = [pose1;pose2;pose3;pose4];
 % poses = [pose2;pose3];
 
-
+figure(3)
 rtde.drawPath(poses);
 % yaxis([-0.9 0])
 % xaxis([-0.4 0.1])
