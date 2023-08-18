@@ -12,17 +12,17 @@ close all
 % filenames = strcat({'Pink_edges'},'.jpg')
 
 % Load from Camera
-% 
 camList = webcamlist;
 cam = webcam(3);
  
 preview(cam)
 
-%%
+%% Stores Multiple Images From the Webcam as cell arrays
 images = {};
 images_hsv = {};
 image_folder = 'C:\Users\jcurl\OneDrive - UNSW\Uni 2023\Term 2\MTRN4230\MATLAB\Github\Project-2\Project-2\webcamImages\';
 
+% For Test Images
 % for i = 1:length(filenames)
 %     images{i} = imread(filenames{i});
 %     images_hsv{i} = rgb2hsv(images{i});
@@ -36,8 +36,8 @@ image_folder = 'C:\Users\jcurl\OneDrive - UNSW\Uni 2023\Term 2\MTRN4230\MATLAB\G
 %%% Don't Start Until Ready
 % prompt = 'Start';
 % inputCommand = input(prompt)
-% 
-% i = 1;
+
+% Take Store Up to 
 for i = 1:100
     images{i} = snapshot(cam);
     images_hsv{i} = rgb2hsv(images{i});
@@ -377,11 +377,11 @@ display(grid')
 
 grid = [
 1 1 1 1 1 1 1 1 1 1;
-1 3 1 4 0 0 0 0 0 1;
-1 0 0 1 2 0 0 0 0 1;
-1 0 0 0 0 0 2 0 0 1;
-1 0 0 0 0 1 2 0 0 1;
-1 0 0 0 0 0 1 0 0 1;
+1 0 1 4 0 0 0 0 0 1;
+1 0 0 1 2 2 0 1 1 1;
+1 3 0 0 0 0 0 0 0 1;
+1 0 0 0 2 1 2 0 0 1;
+1 0 0 0 0 0 0 0 0 1;
 1 1 1 1 1 1 1 1 1 1];
 
 for i = 1:(length(grid(1,:))-1)
