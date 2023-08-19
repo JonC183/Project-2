@@ -7,7 +7,6 @@ clc
 close all
 
 % Load File
-
 % filenames = strcat({'3','4','5'},'.jpg')
 % filenames = strcat({'Pink_edges'},'.jpg')
 
@@ -19,7 +18,6 @@ preview(cam)
 
 %% Stores Multiple Images From the Webcam as cell arrays
 images = {};
-images_hsv = {};
 % image_folder = 'webcamImages/';
 image_folder = '';
 
@@ -38,22 +36,20 @@ image_folder = '';
 % prompt = 'Start';
 % inputCommand = input(prompt)
 
-% Take Store Up to 
-for i = 1:100
+% Take Snapshot of 30 frames
+for i = 1:30
     images{i} = snapshot(cam);
-    images_hsv{i} = rgb2hsv(images{i});
-
     figure(1);
     imshow(images_hsv{i})
     % CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
 end
 
+% Save Images cell array
 webcam_filename = strcat(image_folder,'test.mat')
 save(webcam_filename,"images");
 
 
 %% Grab Images Of Same Board
-
 
 clear all
 clc
@@ -61,25 +57,20 @@ close all
 
 load('test.mat');
 
-% Grab Images of the Index
-img_idx = [5:30];
+images_hsv = {};
 
+% Grab Images according to index and convert to hsv
+img_idx = [5:30];
 for i = 1:length(img_idx)
     images_hsv{i} = rgb2hsv(images{img_idx(i)}(:,200:1400,:));
-    % images_hsv{i} = rgb2hsv(images{i+1});
-    
-    % webcam_filename = strcat(image_folder,string(i),'.mat')
-    % save(webcam_filename,"images");
-
     figure(1);
     imshow(images_hsv{i})
-    % CODE FOR EXTRACTING ESSENTIAL OBJECTS HERE %%%
 end
 
 figure(1);
 imshow(images_hsv{end});
 
-% Create Masks
+%%%%% Create Masks %%%%%
 
 % Mask for Purple Circles
 h_purple = [0.76 0.80];
@@ -101,27 +92,24 @@ h_orange = [0 0.1];
 s_orange = [0.5 0.75];
 v_orange = [0.8 1];
 
-
-
+% For Thresholding
 rgb = prism(6);
 hsv = rgb2hsv(rgb);
 
 centers_purple = {};
-centers_pink = {};
+centers_orange = {};
 mask_purple = {};
 mask_orange = {};
 
 purple_mask_figure = 2;
 orange_mask_figure = 3;
 
-
+% This loop creates the mask for each image and stores them in a cell
+% array, then it finds the centers based on the mask stored
 for idx = 1:length(images_hsv)
-    % % Acquire a single image.
-    % image = snapshot(cam);
-    % image_hsv = rgb2hsv(image);
     image_hsv = images_hsv{idx};
 
-    % Display the image.
+    % Create the masks, plot and find centers
     mask_purple{idx} = createMaskAndShow(image_hsv,h_purple,s_purple,v_purple, ...
         purple_mask_figure,'purple');
     centers_purple{idx} = findCenters(mask_purple{idx});
@@ -131,35 +119,29 @@ for idx = 1:length(images_hsv)
 %     centers_pink{idx} = findCenters(mask_pink{idx});
 
     
-    mask_pink{idx} = createMaskAndShow(image_hsv,h_orange,s_orange,v_orange, ...
-        orange_mask_figure,'pink');
-    centers_pink{idx} = findCenters(mask_pink{idx});
+    mask_orange{idx} = createMaskAndShow(image_hsv,h_orange,s_orange,v_orange, ...
+        orange_mask_figure,'orange');
+    centers_orange{idx} = findCenters(mask_orange{idx});
     
     % mask_yellow{idx} = createMaskAndShow(image_hsv,h_yellow,s_yellow,v_yellow, ...
     %     yellow_mask_figure);
     % centers_yellow{idx} = findCenters(mask_yellow{idx});
-    
 end
-
-sum_centers_purple = zeros(4,2);
-% sum_centers_yellow = zeros(4,2);
-sum_centers_pink = zeros(4,2);
-
-sum_centers_purple = zeros(4,2);
-% sum_centers_yellow = zeros(4,2);
-sum_centers_pink = zeros(4,2);
 
 outliers = zeros(length(images_hsv),1);
 
-% Remove Outliers
+%%% Remove Outliers %%%
+
+% Creates a vector of each point taken from multiple images and stores them
+% in a cell array
 for j = 1:length(centers_purple)
     for pt = 1:4
         points{pt}(j,:) = centers_purple{j}(pt,:)
     end
 end
 
-% Bug with this method since if points are aronud same
-% area it will still count
+% Sifts outliers and creates a vector that corresponds to the images that 
+% have the outliers which can be removed
 for pt = 1:4
     [outlier,L,U,C] = isoutlier(points{1,pt})
     display([points{1,pt} outlier])
@@ -167,56 +149,60 @@ for pt = 1:4
     outliers = outliers + outlier;
 end
 
-% Averages at start value
-% average_centers_purple = centers_purple{1};
-% average_centers_pink = centers_pink{1};
+sum_centers_purple = zeros(4,2);
+% sum_centers_yellow = zeros(4,2);
+sum_centers_orange = zeros(4,2);
 
 n_sum = 0;
 
+% This loop gets the sum of each corresponding point, only if it isn't an
+% outlier
 for idx = 1:length(images_hsv)
+    
+    % First Plot to See if out of alignment
     figure(2);
     hold on
     plot(centers_purple{idx}(:,1),centers_purple{idx}(:,2),'*r');
-    % Get Sum of all Purple Centers
-%     if (centers_purple{idx}(:,1) - centers_purple{idx - 1,:})
-%         
-%     end
     
     % Get Rid of Outliers
-    if ((outliers(idx) == 0) && (length(centers_purple{idx}(:,1)) == 4) && (length(centers_pink{idx}(:,1)) == 4))
+    % If not an outlier add to the sum of the corresponding point
+    if ((outliers(idx) == 0) && (length(centers_purple{idx}(:,1)) == 4) && (length(centers_orange{idx}(:,1)) == 4))
         sum_centers_purple(:,1) = sum_centers_purple(:,1) + centers_purple{idx}(:,1);
         sum_centers_purple(:,2) = sum_centers_purple(:,2) + centers_purple{idx}(:,2);
         n_sum = n_sum + 1;
     end
+
+    % Do the Same for other points
+
     % figure(3);
     % hold on
     % plot(centers_yellow{idx}(:,1),centers_yellow{idx}(:,2),'*r-');
     % % Get Sum of all Yellow Centers
     % sum_centers_yellow(:,1) = sum_centers_yellow(:,1) + centers_yellow{idx}(:,1);
     % sum_centers_yellow(:,2) = sum_centers_yellow(:,2) + centers_yellow{idx}(:,2);
-    % 
-
-    figure(3);
-    imshow(mask_pink{idx});
-    title('Pink');
-    hold on
-    plot(centers_pink{idx}(:,1),centers_pink{idx}(:,2),'*r-');
-    % Get Sum of outliers
-    if ((outliers(idx) == 0) && (length(centers_purple{idx}(:,1)) == 4) && (length(centers_pink{idx}(:,1)) == 4))
-        sum_centers_pink(:,1) = sum_centers_pink(:,1) + centers_pink{idx}(:,1);
-        sum_centers_pink(:,2) = sum_centers_pink(:,2) + centers_pink{idx}(:,2);
-    end
-
+     
     
+    figure(3);
+    imshow(mask_orange{idx});
+    title('Orange');
+    hold on
+    plot(centers_orange{idx}(:,1),centers_orange{idx}(:,2),'*r-');
+    % Get Rid of outliers
+    if ((outliers(idx) == 0) && (length(centers_purple{idx}(:,1)) == 4) && (length(centers_orange{idx}(:,1)) == 4))
+        sum_centers_orange(:,1) = sum_centers_orange(:,1) + centers_orange{idx}(:,1);
+        sum_centers_orange(:,2) = sum_centers_orange(:,2) + centers_orange{idx}(:,2);
+    end    
 end
 
 % Get Averages
 average_centers_purple = sum_centers_purple./n_sum;
 % average_centers_yellow = sum_centers_yellow./length(images_hsv)
-% average_centers_pink = sum_centers_pink./n_sum;
-average_centers_pink = centers_pink{1,11};
+% average_centers_orange = sum_centers_orange./n_sum;
 
-% Plot Averages of Each
+% If out of place otherwise choose image with good coordinates
+average_centers_orange = centers_orange{1,11};
+
+% Plot Averages of Each (Green means final coordinates)
 figure(2);
 hold on
 plot(average_centers_purple(:,1),average_centers_purple(:,2),'*g-');
@@ -227,9 +213,9 @@ plot(average_centers_purple(:,1),average_centers_purple(:,2),'*g-');
 
 figure(3);
 hold on
-plot(average_centers_pink(:,1),average_centers_pink(:,2),'*g-');
+plot(average_centers_orange(:,1),average_centers_orange(:,2),'*g-');
 
-% Conversion for world frame %%%%%
+%%%%% Conversion for world frame %%%%%
 
 % variables_folder = 'H:\MTRN4320\GitHub\Project-2\savedVariables\';
 variables_folder = '';
@@ -249,15 +235,19 @@ h_green = [0.3 0.4];
 s_green = [0.8 1];
 v_green = [0.4 0.7];
 
+% Points in World Frame
 point1 = [-250, 75];
 point2 = [-250, -525];
 point3 = [-900, 75];
 point4 = [-900, -525];
 
+% Pt3 and Pt2 switched to counter backwards along y-axis
 world = [point1 ; point3 ; point2 ; point4];
 
 outputFrameWorld = [abs(900-250) abs(525+75)];
 
+% This Transform is from original image to world which is later used to
+% transform from trans image to world through function transformImgToWorld
 tform_world = fitgeotrans(average_centers_purple,world,'projective');
 board_trans_world = imwarp(images{end},tform_world,'OutputView',imref2d(outputFrameWorld));
 
@@ -271,8 +261,10 @@ world_img = [point1 ; point3 ; point2 ; point4];
 
 outputFrameImg = [590 380];
 
-tform_img = fitgeotrans(average_centers_pink,world_img,'projective');
+% This transform is from the original image to the transformed grid image
+tform_img = fitgeotrans(average_centers_orange,world_img,'projective');
 
+% First one is in hsv and second in rgb
 board_trans_img = imwarp(images_hsv{end},tform_img,'OutputView',imref2d(outputFrameImg));
 board_trans_img_rgb = imwarp(images{end},tform_img,'OutputView',imref2d(outputFrameImg));
 
@@ -284,7 +276,7 @@ figure(4);
 imshow(board_trans_img);
 
 % Get Coordinates of Corners from Image
-board_corners_img = average_centers_pink;
+board_corners_img = average_centers_orange;
 
 % Convert to World Coordinates
 board_corners_world = transformPointsForward(tform_world,board_corners_img);
@@ -293,14 +285,8 @@ board_corners_world = transformPointsForward(tform_world,board_corners_img);
 webcam_filename = strcat(variables_folder,'board_corners.mat')
 save(webcam_filename,"board_corners_img","board_corners_world");
 
-% Produce Transform for Transformed Image to World
-% trans_T_world = trans_T_original*original_T_world
-% trans_T_original = original_T_trans'
-% tform_img_to_world = tform_img.T'*tform_world
-
-% Test to see inverse of tform_img
+% Test to see inverse of tform_img and plot P in original image
 P_img = [0 0];
-
 P_original = transformPointsInverse(tform_img,P_img);
 P_world = transformImgToWorld(tform_img,tform_world,P_img);
 
@@ -308,6 +294,7 @@ figure(1)
 hold on
 plot(P_original(1),P_original(2),'g*','MarkerSize',30)
 
+%%%%% Create Square Grid Centers Coordinate Matrix %%%%%
 num_rows = 5;
 num_cols = 8;
 
@@ -323,7 +310,7 @@ for row = 1:num_rows
     for col = 1:num_cols
         point = [(rows_size*row - round(rows_size/2))...
             (cols_size*(num_cols+1 - col) - round(cols_size/2))];
-        % Reversed order along cols to all bottom left square to be cell
+        % NOTE: Reversed order along cols to all bottom left square to be cell
         % [1,1]
 
         square_center_img{row,col} = point;
@@ -333,6 +320,7 @@ for row = 1:num_rows
         plot(square_center_img{row,col}(1),square_center_img{row,col}(2),'r*');
 
         hold off
+        % Give Conversion to world frame
         square_center_world{row,col} = transformImgToWorld(tform_img,tform_world,point);
     end
 end
@@ -341,7 +329,7 @@ end
 variables_filename = strcat(variables_folder,'Square_Centers.mat')
 save(variables_filename,"square_center_img","square_center_world");
 
-
+%%%%% Create R,G,B masks %%%%%
 mask_red = createMaskAndShow(board_trans_img,h_red,s_red,v_red,5,'red');
 mask_blue = createMaskAndShow(board_trans_img,h_blue,s_blue,v_blue,6,'blue');
 mask_green = createMaskAndShow(board_trans_img,h_green,s_green,v_green,7,'green');
@@ -385,7 +373,7 @@ save(variables_filename,"green_puck_img_coord","green_puck_cell_coord","green_pu
 display("Green puck at;")
 display(green_puck_cell_coord)
 
-%% Create Grid %%%%%
+%% Create Grid From Image %%%%%
 grid = [ones(1,10) ; [ones(5,1) zeros(5,8) ones(5,1)] ; ones(1,10)];
 
 grid = putInGrid(grid,red_puck_cell_coord,1);
@@ -394,9 +382,10 @@ grid = putInGrid(grid,green_puck_cell_coord,3);
 
 % grid = putInGrid(grid,[5 7],1)
 
+% Goal Position
 x_cell = 5;
 y_cell = 6;
-grid = putInGrid(grid,[x_cell,y_cell],4); % Goal Position
+grid = putInGrid(grid,[x_cell,y_cell],4); 
 
 % flip grid 90 degrees
 % grid = rot90(grid,-1)
@@ -422,6 +411,7 @@ startup_rvc;
 % 1 0 0 0 0 0 1 0 0 1;
 % 1 1 1 1 1 1 1 1 1 1];
 
+% Grid From Lab
 grid = [
 1 1 1 1 1 1 1 1 1 1
 1 0 0 1 0 0 4 0 0 1
@@ -434,6 +424,7 @@ grid = [
 % flip grid 90 degrees
 % grid = rot90(grid,-1)
 
+% This loop finds the start and goal positions
 for i = 1:(length(grid(1,:))-1)
     for j = 1:(length(grid(:,1))-1)
         if (grid(j,i) == 3)
@@ -448,6 +439,7 @@ for i = 1:(length(grid(1,:))-1)
     end
 end
 
+% Implement Bug2
 bug = Bug2(grid');
 
 figure;
@@ -480,7 +472,6 @@ close all
 % host = '192.168.230.128'; % THIS IP ADDRESS MUST BE USED FOR THE VMWARE
 host = '192.168.0.100'; % THIS IP ADDRESS MUST BE USED FOR THE REAL ROBOT
 rtdeport = 30003;
-
 vacuumport = 63352;
 
 % Calling the constructor of rtde to setup tcp connction
@@ -489,15 +480,8 @@ rtde = rtde(host,rtdeport);
 % Calling the constructor of vacuum to setup tcp connction
 vacuum = vacuum(host,vacuumport);
 
-% load('\\savedVariables\blue_pucks.mat')
-% load('savedVariables\blue_pucks.mat');
-% load('savedVariables\red_pucks.mat');
-% load('savedVariables\green_pucks.mat');
-% load('savedVariables\board_corners.mat');
-% load('savedVariables\Square_Centers.mat');
-% load('savedVariables\board_trans.mat');
-% load('savedVariables\bug2_path.mat');
-
+% Load all variables from saved files
+% Did this because rtde was stuffing up if everything wasn't cleared
 load('blue_pucks.mat');
 load('red_pucks.mat');
 load('green_pucks.mat');
@@ -508,43 +492,23 @@ load('bug2_path.mat');
 
 figure(1);
 imshow(board_trans_img);
-hold on
-
-for i = 1:length(bug_path)
-    plot(square_center_img{bug_path(i, 1)}(1),square_center_img{bug_path(i, 1)}(2),'g-');
-end
 
 home = [-588.5,-133, 371, 2.2214, -2.2214, 0.00];
 
-puck_height = 6;
+% Used for lowered and raised poses
+lower_height = 6;
 raised_height = 50;
 
-lowered = [0,0,puck_height, 2.2214, -2.2214, 0.00];
+lowered = [0,0,lower_height, 2.2214, -2.2214, 0.00];
 raised = [0,0,raised_height, 2.2214, -2.2214, 0.00];
 
 rtde.movej(home);
 
-
-
-% pose1 = rtde.movej(pts(1,:));
-% pose2 = rtde.movej(pts(2,:));
-% pose3 = rtde.movej(pts(3,:));
-% pose4 = rtde.movej(pts(4,:));
-
-% poses = [pose1;pose2;pose3;pose4];
-% poses = [pose2;pose3;pose4];
-
-pt = square_center_world{2,4}
-
-move_pt = [pt(1), pt(2), raised(3:end)];
-
+% Hit Enter
 Prompt = 'Going to Board Corners'
 input(Prompt)
 
-% Move to bottom right
-
 pt = square_center_world{1,1}
-
 bottom_right = [pt(1), pt(2), 50, 2.2214, -2.2214, 0.00];
 
 pt = square_center_world{5,1}
@@ -564,15 +528,10 @@ pose2 = rtde.movel(bottom_left);
 pose3 = rtde.movel(top_left);
 pose4 = rtde.movel(top_right);
 
-% Move to blue obstacles
-
 poses = [pose1;pose2;pose3;pose4];
-% poses = [pose2;pose3];
 
 figure(3)
 rtde.drawPath(poses);
-% yaxis([-0.9 0])
-% xaxis([-0.4 0.1])
 
 XMIN = -0.9;
 XMAX = -0.1;
@@ -588,17 +547,21 @@ puck_green_raised = [green_puck_world_coord(1), green_puck_world_coord(2), raise
 
 pose1 = rtde.movel(puck_green_raised);
 
+% Hit Enter
 Prompt = 'At Green Puck Raised'
 input(Prompt)
 
 pose2 = rtde.movel(puck_green_lowered);
 
 vacuum.grip();
+
+% Hit Enter when gripped
 Prompt = 'At Green Puck Lowered'
 input(Prompt)
 
 pose3 = rtde.movel(puck_green_raised)
 
+% Hit Enter
 Prompt = 'At Green Puck Raised'
 input(Prompt)
 
@@ -606,8 +569,6 @@ poses = [pose1;pose2;pose3]
 
 figure(2);
 rtde.drawPath(poses);
-% yaxis([-0.9 0])
-% xaxis([-0.4 0.1])
 
 XMIN = -0.9;
 XMAX = -0.1;
@@ -618,16 +579,12 @@ axis([XMIN XMAX YMIN YMAX])
 
 poses = [];
 
+%%%% Move to Points Created by bug_path
 for i = 1:length(bug_path)
     pt = square_center_world{bug_path(i,1),bug_path(i,2)}
     move_green = [pt(1), pt(2), raised(3:end)];
     rtde.movel(move_green)
 end
-
-% figure(1);
-% rtde.drawPath(poses);
-% yaxis([-0.9 0])
-% xaxis([-0.4 0.1])
 
 XMIN = -0.9;
 XMAX = -0.1;
@@ -649,6 +606,10 @@ pose2 = rtde.movel(final_green_raised);
 
 %%
 
+%%% This function is implemented at each mask, it goes to each center of
+%%% the square grid and creates a kernel. If the sum of all the points in
+%%% the kernel match that of the size of the kernel then it indicates that
+%%% there is a puck and gets the img, cell and world coordinates
 function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(mask,centers,width,tform_img,tform_world,colour)
     
     puck_img_coord = [];
@@ -671,7 +632,7 @@ function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(ma
                 puck_cell_coord = cat(1,puck_cell_coord,[row,col]);
                 world_point = transformImgToWorld(tform_img,tform_world,point);
                 puck_world_coord = cat(1,puck_world_coord,world_point);
-            elseif (sum(kernel(:)) < length(kernel(:)) && sum(kernel(:)) > 0) % There is part of a puck in the image
+            elseif (sum(kernel(:)) < length(kernel(:)) && sum(kernel(:)) > 0) % There is part of a puck in the kernel
                 input(strcat('Please move ',colour,' into cell'));
             end
         end
@@ -679,25 +640,26 @@ function [puck_img_coord,puck_cell_coord,puck_world_coord] = findColouredPuck(ma
 
 end
 
+%%% Function for putting pucks in grid
 function grid = putInGrid(grid,puck_cell_coord,val)
-
-if (length(puck_cell_coord(:,1)) == 1)
-    cell_x = puck_cell_coord(1) + 1;
-    cell_y = puck_cell_coord(2) + 1;
+    if (length(puck_cell_coord(:,1)) == 1)
+        cell_x = puck_cell_coord(1) + 1;
+        cell_y = puck_cell_coord(2) + 1;
+        
+        grid(cell_x,cell_y) = val;
+        return;
+    end
     
-    grid(cell_x,cell_y) = val;
-    return;
+    for i = 1:length(puck_cell_coord)
+        cell_x = puck_cell_coord(i,1) + 1;
+        cell_y = puck_cell_coord(i,2) + 1;
+        
+        grid(cell_x,cell_y) = val;
+    end
 end
 
-for i = 1:length(puck_cell_coord)
-    cell_x = puck_cell_coord(i,1) + 1;
-    cell_y = puck_cell_coord(i,2) + 1;
-    
-    grid(cell_x,cell_y) = val;
-end
-
-end
-
+%%% Creates a mask using the hsv values then processes the image using
+%%% closing and then opening
 function mask = createMaskAndShow(im_hsv,h,s,v,idx,colour)
     
     mask =  (im_hsv(:,:,1) <= max(h))&(im_hsv(:,:,1) > min(h))&...
@@ -712,8 +674,9 @@ function mask = createMaskAndShow(im_hsv,h,s,v,idx,colour)
     title(colour);
 end
 
+%%% Function for finding the four most dominant blobs and returning their
+%%% centroids. The function also sorts these points at the same time
 function centers = findCenters(mask)
-    
     % Find Circles and Return Centers
     blobs = regionprops(mask,'Centroid');
     
@@ -723,10 +686,11 @@ function centers = findCenters(mask)
     % Order Coordinates
     centers = sortrows(centers,1);
     centers = [sortrows(centers(1:2,:),2);sortrows(centers(3:4,:),2);];
-
 end
 
+%%% This function is for converting the transformed image coordinate
+%%% (square cell image), and returning the world coordinate
 function P_world = transformImgToWorld(tform_img,tform_world,P_img)
-    P_original = transformPointsInverse(tform_img,P_img)
-    P_world = transformPointsForward(tform_world,P_original)
+    P_original = transformPointsInverse(tform_img,P_img);
+    P_world = transformPointsForward(tform_world,P_original);
 end
